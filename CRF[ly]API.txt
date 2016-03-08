@@ -78,6 +78,15 @@ void add(int id, int x,int y,int a,int r,int g,int b);
 	Аналогична предыдущей, но указывает степень прибавления. 
 	Альфа-канал в итоговой точке не изменяется.
 	
+void add(int id, int x,int y,int r,int g,int b);
+	Выполняет поканальное вычитание цветов слоя id в точке (x:y). 
+	Минимальное итоговое значение каждого канала не ниже 0. 
+	Альфа-канал в итоговой точке не изменяется.
+	
+void add(int id, int x,int y,int a,int r,int g,int b);
+	Аналогична предыдущей, но указывает степень вычитания. 
+	Альфа-канал в итоговой точке не изменяется.
+	
 void mult(int id, int x,int y,int r,int g,int b);
 	Выполняет поканальное умножение цветов слоя id в точке (x:y). 
 	Альфа-канал в итоговой точке не изменяется.
@@ -99,6 +108,7 @@ void grayer(int id, int tid, int x,int y,int x1,int y1,int a);
 	Усередняет значения цветовых каналов. Самостоятельное использование не рассматривается, используйте DoGray.
 	
 ==Высокоуровневые функции рисования==
+	Во всех этих функциях применяются цвета, возвращаемые функциями tRGB и ARGB.
 
 void DrawVLine(int id, unsigned int color, int x1, int y1, int k);
 void DrawHLine(int id, unsigned int color, int x1, int y1, int k);
@@ -122,6 +132,7 @@ void DrawRect(int id, unsigned int color, int x1, int y1, int xk, int yk, int mo
 	2 - умножение (mult)
 	3 - установка прозрачности (transparency). Используется только альфа-составляющая цвета.
 	4 - инвертирование (invert). Заданное значение цвета не имеет значения.
+	5 - вычитание (rem)
 	
 void FDrawRect(int id, unsigned int color, int x1, int y1, int xk, int yk);
 
@@ -132,11 +143,44 @@ void HGradient(int id, unsigned int colorA, unsigned int colorB, int x1, int y1,
 
 	Рисует вертикальный/горизонтальный градиент на слое id от цвета colorA до colorB, начиная с точки (x1:y1), с линейными размерами xk и yk. Допускает те же режимы рисования, что и в DrawRect, кроме инвертирования.
 
-	
 void IncludeLayer(int id, int tid, int x1, int y1, int mode);
 	
 	Рисует слой id на слое tid, начиная с точки (x1:y1). Допускает те же режимы рисования, что и в DrawRect, кроме инвертирования и установки прозрачности.
 	
+	
 void FragmentLayer(int id, int tid, int tx, int ty, int x2, int y2, int xk, int yk, int mode);
 
-	Рисует фрагмент слоя id 
+	Рисует фрагмент слоя id (от точки x2:y2 с размерами xk:yk) на слое tid. Допускает те же режимы рисования, что и в DrawRect, кроме инвертирования и установки прозрачности.
+	
+void TransformLayer(int id, int tid, int tx, int ty, int mode);
+void TransformLayer(int id, int tid, int tx, int ty, int x2, int y2, int xk, int yk, int mode);
+
+	Аналогичны IncludeLayer и FragmentLayer, но вместо режима рисования определяет способ трансформации:
+	0 - none
+	1 - invert vertical
+	2 - invert horizontal
+	3 - rotate 180
+	4 - invert diagonal
+	5 - rotate left
+	6 - rotate right
+	
+void PrintText(int id, int fontn, char *str, int color, int x, int y);
+	
+	Пишет текст str на слое id цветом color шрифтом fontn (загружен заранее!) начиная с точки (x:y).
+	
+void PrintNum(int id, int fontn, int subj, int color, int x, int y, int k);
+
+	Аналогична предыдущей, но пишет число, при этом k - сколько разрядов максимум допустимо. Пустые разряды рисуются с нулем.
+	
+int TextWidth(int fontn, char *str);
+int TextHeight(int fontn, char *str);
+
+	Возращают линейные размеры текста str в шрифте fontn.
+	
+void MascedLayer(int id, int tid, int tx, int ty, int ColorR, int ColorG, int ColorB);
+
+	Аналогична IncludeLayer, но содержит в своих параметрах цвета ColorR, ColorG, ColorB, которые подставляются вместо красного, зеленого и синего.
+	
+void ZoomRender(int id, int tid, int tx, int ty, int x1, int y1, int cx, int cy, int x2, int y2, int mode);
+
+	Аналогична FrammentLayer, но переносимый фрагмент холста также растягивается до x1, y1.
