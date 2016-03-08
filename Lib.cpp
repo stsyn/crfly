@@ -177,6 +177,42 @@ void add(int id, int x,int y,int a,int r,int g,int b)
 	
 	cnv[id][x][y]= ARGB(da,dr,dg,db);
 }
+
+void rem(int id, int x,int y,int r,int g,int b)
+{
+	if (x>=cnvd[id][0] || x<0 || y>=cnvd[id][1] || y<0) return;
+	
+	int dr,dg,db,da;
+	ARGBt(cnv[id][x][y],&da,&dr,&dg,&db);
+	if (da==0) return;
+	
+	dr-=r;
+	if (dr<0) dr=0;
+	dg-=g;
+	if (dg<0) dg=0;
+	db-=b;
+	if (db<0) db=0;
+	
+	cnv[id][x][y]= ARGB(da,dr,dg,db);
+}
+	
+void rem(int id, int x,int y,int a,int r,int g,int b)
+{
+	if (x>=cnvd[id][0] || x<0 || y>=cnvd[id][1] || y<0) return;
+	
+	int dr,dg,db,da;
+	ARGBt(cnv[id][x][y],&da,&dr,&dg,&db);
+	if (da==0) return;
+	
+	dr=dr - ((r * a) >> 8);
+	if (dr<0) dr=0;
+	dg=dg - ((g * a) >> 8);
+	if (dg<0) dg=0;
+	db=db - ((b * a) >> 8);
+	if (db<0) db=0;
+	
+	cnv[id][x][y]= ARGB(da,dr,dg,db);
+}
 	
 void mult(int id, int x,int y,int r,int g,int b)
 {
@@ -364,6 +400,7 @@ void DrawRect(int id, unsigned int color, int x1, int y1, int xk, int yk, int mo
 				else if (mode == 2) mult(id,x1+i,y1+j,a,r,g,b);
 				else if (mode == 3) transparency(id,x1+i,y1+j,a);
 				else if (mode == 4) invert(id,x1+i,y1+j);
+				else if (mode == 5) rem(id,x1+i,y1+j,a,r,g,b);
 			}
 			else
 				{
@@ -372,6 +409,7 @@ void DrawRect(int id, unsigned int color, int x1, int y1, int xk, int yk, int mo
 				else if (mode == 2) mult(id,x1+i,y1+j,r,g,b);
 				else if (mode == 3) transparency(id,x1+i,y1+j,a);
 				else if (mode == 4) invert(id,x1+i,y1+j);
+				else if (mode == 5) rem(id,x1+i,y1+j,r,g,b);
 			}
 		}
 }
@@ -408,6 +446,7 @@ void VGradient(int id, unsigned int colorA, unsigned int colorB, int x1, int y1,
 			if (mode == 1) add(id, i+x1, j+y1, da, dr, dg, db);
 			if (mode == 2) mult(id, i+x1, j+y1, da, dr, dg, db);
 			if (mode == 3) transparency(id, i+x1, j+y1, da);
+			if (mode == 5) rem(id, i+x1, j+y1, da, dr, dg, db);
 		}
 	}
 }
@@ -431,6 +470,7 @@ void HGradient(int id, unsigned int colorA, unsigned int colorB, int x1, int y1,
 			else if (mode == 1) add(id, i+x1, j+y1, da, dr, dg, db);
 			else if (mode == 2) mult(id, i+x1, j+y1, da, dr, dg, db);
 			else if (mode == 3) transparency(id, i+x1, j+y1, da);
+			else if (mode == 5) rem(id, i+x1, j+y1, da, dr, dg, db);
 		}
 	}
 }
@@ -467,12 +507,14 @@ void IncludeLayer(int id, int tid, int x1, int y1, int mode)
 				if (mode == 0) plot(tid,x1+i,y1+j,a,r,g,b);
 				else if (mode == 1) add(tid,x1+i,y1+j,a,r,g,b);
 				else if (mode == 2) mult(tid,x1+i,y1+j,a,r,g,b);
+				else if (mode == 5) rem(tid,x1+i,y1+j,a,r,g,b);
 			}
 			else
 			{
 				if (mode == 0) plot(tid,x1+i,y1+j,cnv[id][i][j]);
 				else if (mode == 1) add(tid,x1+i,y1+j,r,g,b);
 				else if (mode == 2) mult(tid,x1+i,y1+j,r,g,b);
+				else if (mode == 5) rem(tid,x1+i,y1+j,r,g,b);
 			}
 		}
 }
@@ -502,12 +544,14 @@ void FragmentLayer(int id, int tid, int tx, int ty, int x2, int y2, int xk, int 
 				if (mode == 0) plot(tid,tx+i,ty+j,a,r,g,b);
 				else if (mode == 1) add(tid,tx+i,ty+j,a,r,g,b);
 				else if (mode == 2) mult(tid,tx+i,ty+j,a,r,g,b);
+				else if (mode == 5) rem(tid,tx+i,ty+j,a,r,g,b);
 			}
 			else
 			{
 				if (mode == 0) plot(tid,tx+i,ty+j,cnv[id][x2 + i][y2 + j]);
 				else if (mode == 1) add(tid,tx+i,ty+j,r,g,b);
 				else if (mode == 2) mult(tid,tx+i,ty+j,r,g,b);
+				else if (mode == 5) rem(tid,tx+i,ty+j,r,g,b);
 			}
 		}
 }
@@ -760,12 +804,14 @@ void ZoomRender(int id, int tid, int tx, int ty, int x1, int y1, int cx, int cy,
 				if (mode == 0) plot(tid,tx+i,ty+j,a,r,g,b);
 				else if (mode == 1) add(tid,tx+i,ty+j,a,r,g,b);
 				else if (mode == 2) mult(tid,tx+i,ty+j,a,r,g,b);
+				else if (mode == 5) rem(tid,tx+i,ty+j,a,r,g,b);
 			}
 			else
 			{
 				if (mode == 0) plot(tid,tx+i,ty+j,cnv[id][cx + (int)(i*xt)][cy + (int)(j*yt)]);
 				else if (mode == 1) add(tid,tx+i,ty+j,r,g,b);
 				else if (mode == 2) mult(tid,tx+i,ty+j,r,g,b);
+				else if (mode == 5) rem(tid,tx+i,ty+j,r,g,b);
 			}
 		}
 
