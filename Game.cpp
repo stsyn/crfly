@@ -16,13 +16,14 @@ unsigned int sz=100;
 char str[strmax+1][64];
 int scrs[scrmax][2];
 
-int sel=1, selmax=4;
+int sel=1, selmax=4, dmode=-1,dsel=0,tmax=0;
 int lc = 0;
 int f=0;
 int r=5;
 int *mas[2];
 
 int modif=0, scrn=0, c=0, gs, pg;
+bool dbg=false;
 int inmenu=1;
 
 unsigned long int gframe=0;
@@ -128,7 +129,7 @@ void hsc_reset()
 	FILE *css_file;
 	char css_path[] = HIGSCORE_DAT;
 	css_file = fopen(css_path, "w" ); 
-	fprintf(css_file, "%li",0x7fffffff);
+	fprintf(css_file, "%li",~(1078*2) & 0x7FFFFFFF);
 	scores[0][0] = 0;
 	shipstyle[0] = 0;
 	shipstyle[1] = 0;
@@ -386,6 +387,45 @@ void LS()
 }
 
 const int inmenu_color=tRGB(196,196,196), inmenu_selected=tRGB(224,224,0);
+
+void Debug()
+{
+	FDrawRect(200,tRGB(0,0,0),0,0,xmax,ymax);
+	char strn[64];
+	int tc,cl;
+	tmax=0;
+	if (dmode == -1) 
+	{
+		tc=0;
+		for (int i=0; i<=512; i++) if (getWidth(i) !=0) tmax++;
+		for (i=0; i<tmax; i++)
+		{
+			for (; tc<=512; tc++) 
+			{
+				if (getWidth(tc) !=0) break;
+			}
+
+			if (dsel == i) 
+			{
+				cl = inmenu_selected;
+			}
+			else 
+			{
+				cl = inmenu_color;
+			}
+			sprintf(strn,"%i (%ix%i)",tc,getWidth(tc),getHeight(tc));
+			PrintText(200,1,strn,cl,100,95-(dsel*11)+i*11);
+			tc++;
+		}
+		sprintf(strn,"Loaded: %i",tmax);
+		PrintText(200,1,strn,inmenu_color,0,0);
+	}
+	else
+	{
+		IncludeLayer(dmode,200,0,0,0);
+	}
+	renderer(200);
+}
 
 void MM()
 {
@@ -1927,6 +1967,11 @@ void Demo3()
 
 void OP()
 {
+	if (dbg)
+	{
+		Debug();
+		return;
+	}
 	if (modif == 0)
 	{
 		if (scrn == 0)
@@ -1955,6 +2000,49 @@ void OP()
 
 void KOP()
 {
+	if (get_key(KEY_F3) && (get_keypressed(KEY_F3) == 0))
+	{
+		dbg=!dbg;
+		return;
+	}
+	if (dbg)
+	{
+		if (get_key(KEY_UP) && (get_keypressed(KEY_UP) % 20 == 0 || (get_keypressed(KEY_UP) > 60 && get_keypressed(KEY_UP) % 2 == 0)))
+		{
+			if (dmode==-1)
+			{
+				dsel--;
+				if (dsel < 0) dsel=tmax-1;
+			}
+		}
+		if (get_key(KEY_DOWN) && (get_keypressed(KEY_DOWN) % 20 == 0 || (get_keypressed(KEY_DOWN) > 60 && get_keypressed(KEY_DOWN) % 2 == 0)))
+		{
+			if (dmode==-1)
+			{
+				dsel++;
+				if (dsel+1 > tmax) dsel=0;
+			}
+		}
+		if (get_key(KEY_RETURN) && get_keypressed(KEY_RETURN) == 0)
+		{
+			if (dmode==-1)
+			{
+				int tc = 0;
+				for (int i=0; i<dsel; i++)
+				{
+					for (; tc<=512; tc++) 
+					{
+						if (getWidth(tc) !=0) break;
+					}
+					tc++;
+				}
+				dmode = tc;
+			}
+			else dmode = -1;
+		}
+		return;
+	}
+	
 	if (get_key(KEY_ESCAPE) && get_keypressed(KEY_ESCAPE) == 0 && inmenu==1)
 	{
 		Quit(0);
