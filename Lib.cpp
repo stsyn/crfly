@@ -617,9 +617,9 @@ void TransformLayer(int id, int tid, int tx, int ty, int mode)
 	for (i = nx; i<mx; i++)
 		for (j = ny; j<my; j++)
 		{	
-			if ((mode & 1) == 1) tdy=-j-1;
+			if ((mode & 1) == 1) tdy=ay-j-1;
 			else tdy=j;
-			if ((mode & 2) == 2) tdx=-i-1;
+			if ((mode & 2) == 2) tdx=ax-i-1;
 			else tdx=i;
 			if ((mode & 4) == 4) ARGBt(cnv[id][tdy][tdx],&a,&r,&g,&b);
 			else ARGBt(cnv[id][tdx][tdy],&a,&r,&g,&b);
@@ -630,7 +630,8 @@ void TransformLayer(int id, int tid, int tx, int ty, int mode)
 			}
 			else
 			{
-				plot(tid,tx+i,ty+j,cnv[id][tdx][tdy]);
+				if ((mode & 4) == 4) plot(tid,tx+i,ty+j,cnv[id][tdy][tdx]);
+				else plot(tid,tx+i,ty+j,cnv[id][tdx][tdy]);
 			}
 		}
 }
