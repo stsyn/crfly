@@ -682,7 +682,7 @@ void MM()
 		sel = 1;
 		sprintf(strn, "CRFly %s", version_name);
 		PrintText(200,1,strn,inmenu_color,60,10+20);
-		PrintText(200,1,"Based on CRF(ly) v0.93",inmenu_color,60,10+30);
+		PrintText(200,1,"Based on CRF(ly) v0.94",inmenu_color,60,10+30);
 		PrintText(200,1,"Developed by St@SyaN 2016",inmenu_color,60,10+50);
 		PrintText(200,1,"Using OpenGL",inmenu_color,60,10+40);
 	}
