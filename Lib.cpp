@@ -841,6 +841,7 @@ void DrawFrame(int id, unsigned int color, int x, int y, int xk, int yk)
 	
 int gener(int max)
 {
+	if (max == 0) return 0;
 	return rand()%max;
 }
 
