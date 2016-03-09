@@ -7,6 +7,7 @@
 		#define SEP "/"
 	#endif
 	
+	#define KEY_F3 0x3C
 	#define KEY_UP 0x052
 	#define KEY_DOWN 0x051
 	#define KEY_LEFT 0x050
