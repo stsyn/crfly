@@ -684,6 +684,7 @@ void MM()
 		PrintText(200,1,strn,inmenu_color,60,10+20);
 		PrintText(200,1,"Based on CRF(ly) v0.94",inmenu_color,60,10+30);
 		PrintText(200,1,"Developed by St@SyaN 2016",inmenu_color,60,10+50);
+		PrintText(200,1,"SDL port by DeaDDomMER",inmenu_color,60,10+60);
 		PrintText(200,1,"Using OpenGL",inmenu_color,60,10+40);
 	}
 	if (inmenu==1421)
