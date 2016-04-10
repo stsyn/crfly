@@ -16,6 +16,8 @@
 	#define KEY_RETURN 0x028
 	#define KEY_A 0x004
 	#define KEY_D 0x007
+	#define KEY_W 26
+	#define KEY_S 22
 	#define KEY_NUMPAD4 0x05C
 	#define KEY_NUMPAD6 0x05E
 

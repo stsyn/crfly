@@ -507,6 +507,7 @@ void IncludeLayer(int id, int tid, int x1, int y1, int mode)
 				if (mode == 0) plot(tid,x1+i,y1+j,a,r,g,b);
 				else if (mode == 1) add(tid,x1+i,y1+j,a,r,g,b);
 				else if (mode == 2) mult(tid,x1+i,y1+j,a,r,g,b);
+				else if (mode == 3) transparency(tid, i+x1, j+y1, a);
 				else if (mode == 5) rem(tid,x1+i,y1+j,a,r,g,b);
 			}
 			else
@@ -514,6 +515,7 @@ void IncludeLayer(int id, int tid, int x1, int y1, int mode)
 				if (mode == 0) plot(tid,x1+i,y1+j,cnv[id][i][j]);
 				else if (mode == 1) add(tid,x1+i,y1+j,r,g,b);
 				else if (mode == 2) mult(tid,x1+i,y1+j,r,g,b);
+				else if (mode == 3) transparency(tid,i+x1, j+y1, 255);
 				else if (mode == 5) rem(tid,x1+i,y1+j,r,g,b);
 			}
 		}
@@ -553,6 +555,17 @@ void FragmentLayer(int id, int tid, int tx, int ty, int x2, int y2, int xk, int 
 				else if (mode == 2) mult(tid,tx+i,ty+j,r,g,b);
 				else if (mode == 5) rem(tid,tx+i,ty+j,r,g,b);
 			}
+		}
+}
+
+void BWNoise(int id, int x1, int y1, int xk, int yk)
+{
+	int i,j,t;
+	for (i = 0; i<xk; i++)
+		for (j = 0; j<yk; j++)
+		{	
+			t = gener(256);
+			plot(id,x1+i,y1+j,t,t,t);
 		}
 }
 

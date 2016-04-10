@@ -8,9 +8,12 @@
 #include "Game.h"
 #include "GameFiles.h"
 #include "Updater.h"
+#include "LParticles.h"
+#include "LPObjects.h"
+#include "LPController.h"
 
 int clr, nclr[3], quality=0;
-const int strmax = 46, scrmax = 38;
+const int strmax = 46, scrmax = 38, maxparticles=360;
 unsigned int sz=100;
 
 char str[strmax+1][64];
@@ -21,9 +24,10 @@ int lc = 0;
 int f=0;
 int r=5;
 int *mas[2];
+int o;
 
 int modif=0, scrn=0, c=0, gs, pg;
-bool dbg=false;
+bool dbg=false,d3enabled=false,ac5=false,dc5=false,nobonuses=false;
 int inmenu=1;
 
 unsigned long int gframe=0;
@@ -33,10 +37,15 @@ const int mplayers = 2, maxbg=2, maxfg=2, maxabonuses=17;
 int short unsigned tways, pos[mplayers], map[mplayers][22][6], delay, gamestate, anim[mplayers], doloykamni[mplayers],tbg,tfg,cbg,cfg,tcfix;
 long unsigned int  smoothstuff[mplayers][5], scores[mplayers][6], tmult=1,xmult[mplayers],tdelay,shipmove[mplayers];
 long int bonuses[mplayers][maxabonuses];
-int bg[maxbg][3], fg[maxfg][3], level;
-unsigned int css[mplayers][3], tcss, ttcss[3], cclr[2][3], shipstyle[2],tshipstyle, maxships, ccss=0;
+int bg[maxbg][3], fg[maxfg][3], level,act[2];
+unsigned int css[mplayers][3], tcss, ttcss[3], cclr[3][3], shipstyle[2],tshipstyle, maxships, ccss=0;
 void LS();
 void ingame();
+
+LPController LP1(256,0,0,90,7,false,160,100);
+LPController LP(256,0,0,90,7,false,160,100);
+LPController EP(64,0,0,10,4,false,0,0);
+LPController AP(256,0,0,10,6,false,0,0);
 
 bool set_read()
 {
@@ -109,8 +118,8 @@ void hsc_read()
 	else if (scores[0][0] < 2500) maxships = 1;
 	else if (scores[0][0] < 5000) maxships = 2;
 	else if (scores[0][0] < 10000) maxships = 3;
-	else /*if (scores[0][0] < 20000)*/ maxships = 4;
-	//else maxships = 5;
+	else if (scores[0][0] < 20000) maxships = 4;
+	else maxships = 5;
 }
 
 void hsc_write()
@@ -165,13 +174,24 @@ void str_read()
 
 int init()
 {
+
+	cclr[0][0] = 0;
+	cclr[1][0] = 0;
+	cclr[2][0] = 0;
+	cclr[0][1] = 0;
+	cclr[1][1] = 192;
+	cclr[2][1] = 255;
+	cclr[0][2] = 32;
+	cclr[1][2] = 192;
+	cclr[2][2] = 255;
+
+
 	buildLayer(128,xmax,ymax);
 	buildLayer(129,xmax,ymax);
 
 	mas[0] = new int[sz];
 	mas[1] = new int[sz];
 	srand(unsigned(time(NULL)));
-	
 
 	DrawRect(128,tRGB(0,0,0),0,0,xmax,ymax,0);
 	DrawRect(129,tRGB(0,0,0),0,0,xmax,ymax,0);
@@ -189,7 +209,7 @@ int init()
 	
 	////////////////////////////////////////////////////
 	buildLayer(200,xmax,ymax);
-	buildLayer(510,32,80);
+	buildLayer(510,32,96);
 	LS();
 	scr_read();
 
@@ -207,8 +227,13 @@ int init()
 	LS();
 	tex_read(0);
 	tex_read(1);
+	for (int i=1; i<=23; i++) 
+	{
+		tex_read(i);
+	}
 
 	str_read();
+
 	return 0;
 }
 
@@ -216,6 +241,23 @@ void close()
 {
 	delete[] mas[0];
 	delete[] mas[1];
+}
+
+void SolotoSP()
+{
+	scores[0][4]=0;
+	scores[0][5]=2;
+	for (int i=0; i<6; i++) 
+	{
+		for (int j=0; j<20; j++) 
+			{
+				map[0][j][i]=0;
+			}
+	}
+	for (i=0; i<maxabonuses; i++) bonuses[0][i]=0;
+	tmult = 1;
+	buildLayer(499,32,20);
+	scores[0][3] = 1;
 }
 
 void gamereset()
@@ -228,21 +270,19 @@ void gamereset()
 	HGradient(511,tRGB(64,64,64),tRGB(196,196,196),0,0,4,200,0);
 	HGradient(511,tRGB(196,196,196),tRGB(64,64,64),4,0,8,200,0);
 	int i;
-	for (i=1; i<=23; i++) 
-	{
-		if ((i != 9 || quality > 0) && (i < 10 || quality > 1)) tex_read(i);
-	}
 	//i wanna yo ship
-	buildLayer(510, 32, 80);
+
+	buildLayer(510, 32, 96);
 	MascedLayer(17,510,0,0,css[0][0],css[0][1],css[0][2]);	
 	buildLayer(506, 24, 14);
 	MascedLayer(16+8,506,0,0,tRGB(255,255,255),tRGB(255,255,255),css[0][2]);
 	buildLayer(508, 18, 18);
 	MascedLayer(16+7,508,0,0,css[0][0],tRGB(255,255,255),tRGB(255,255,255));
+
 	//player 2 u too
-	if (pg>0)
+	if (pg>1)
 	{
-	buildLayer(410, 32, 80);
+	buildLayer(410, 32, 96);
 	MascedLayer(17,410,0,0,css[1][0],css[1][1],css[1][2]);	
 	buildLayer(406, 24, 14);
 	MascedLayer(16+8,406,0,0,tRGB(255,255,255),tRGB(255,255,255),css[1][2]);
@@ -259,6 +299,21 @@ void gamereset()
 	}
 	HGradient(507,tRGB(255,0,0),tRGB(255,255,0),0,0,18,12,2);
 	HGradient(507,tRGB(255,255,0),tRGB(0,255,0),18,0,18,12,2);
+	//top bar
+	if (shipstyle[0] == 5)
+	{
+		buildLayer(504,20,200);
+		buildLayer(0,12,36);
+		TransformLayer(507,0,0,0,6);
+		ZoomRender(0,504,0,0,20,200,0,0,12,36,0);
+		delLayer(0);
+	}
+	//particles
+	EP.randangle = 22;
+	EP.randspawnx = 4;
+	EP.randsize = 2;
+	AP.randangle = 360;
+	AP.defspeed = 200;
 	//another shit
 	tbg = 0;
 	cbg = 0;
@@ -266,6 +321,9 @@ void gamereset()
 	cfg = 0;
 	frame=0;
 	gframe=0;
+	ac5=false;
+	dc5=false;
+	nobonuses=false;
 	tways=3;
 	for (i=0; i<6; i++) 
 	{
@@ -322,30 +380,34 @@ void gamereset()
 
 void gameover()
 {
-	if (scores[0][0]<=scores[0][1] && pg == 0) 
+	if (scores[0][0]<=scores[0][1] && pg == 1) 
 	{
 		hsc_write();
 		hsc_read();
 	}
 	scrn=0;
 	delLayer(511);
-	delLayer(510);
 	delLayer(509);
 	delLayer(508);
 	delLayer(507);
 	delLayer(506);
 	delLayer(505);
-	if (pg >0)
+	if (pg >1)
 	{
-	delLayer(410);
-	delLayer(408);
-	delLayer(406);
+		delLayer(408);
+		delLayer(406);
 	}
+}
+
+void spgameover()
+{
+	scores[0][1]+=scores[0][4]*9;
+	gameover();
 }
 
 /*
 
-  Hey there, you need to know what scores[x] are mean!
+  Hey there, you need to know what scores[x] is mean!
   0 - HiScore
   1 - Total score
   2 - Only score
@@ -427,11 +489,1312 @@ void Debug()
 	renderer(200);
 }
 
+//////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////
+
+void renderBG(int phs, int spd, int quality)
+{
+	int i, j;
+	if (quality>0) //stars
+		{
+			c = (phs*2 +(delay*2/spd))% ymax;
+			for (i = 0; i<sz; i++)
+			{
+				if (mas[1][i]+c<ymax) plot(200, mas[0][i],mas[1][i]+c, 4282400832);
+				else plot(200, mas[0][i],mas[1][i]+c-ymax, 4282400832);
+			}
+			c = (phs*3 +(delay*3/spd))% ymax;
+			for (i = 0; i<sz; i++)
+			{
+				if (mas[1][i]+c<ymax) plot(200, xmax-mas[0][i],mas[1][i]+c, 4286611584);
+				else plot(200, xmax-mas[0][i],mas[1][i]+c-ymax, 4286611584);
+			}
+			c = (phs*6 +(delay*6/spd))% ymax;
+			for (i = 0; i<sz; i++)
+			{
+				if (-mas[1][i]+c<0) plot(200, mas[0][i],ymax-mas[1][i]+c, 4291085508);
+				else plot(200, mas[0][i],-mas[1][i]+c, 4291085508);
+			}
+		}
+
+		if (quality>1) //bg objects
+		{
+			int atbg = -1;
+			c = (phs*8 +(delay*8/spd));
+			for (i = 0; i<tbg; i++)
+			{
+				bg[i][2]+=c-cbg;
+				TransformLayer(bg[i][0],200,bg[i][1],bg[i][2],0,0,getWidth(bg[i][0]),getHeight(bg[i][0]),3);
+				if (bg[i][2] > ymax) atbg = i;
+			}
+			cbg = c;
+			if (atbg != -1)
+			{
+				for (i = atbg; i<tbg-1; i++)
+				{
+					for (j=0;j<3;j++) bg[i][j] = bg[i+1][j];
+				}
+				tbg--;
+			}
+			if (tbg < maxbg)
+			{
+				int tt;
+				if (tbg == 0) tt = ymax;
+				else tt = bg[tbg-1][2];
+				tt = gener(6*(spd/4+ymax-tt));
+				if (tt == 0)
+				{
+					int t2;
+					t2 = 16+9+gener(14);
+					bg[tbg][0] = t2;
+					bg[tbg][2] = -getHeight(t2);
+					bg[tbg][1] = -getWidth(t2)/2 + gener(xmax+getWidth(t2));
+					tbg++;
+				}
+			}
+		}
+}
+
+void renderFG(int phs, int spd)
+{
+	int i, j;
+	if (quality>1) //objects
+		{
+			int atfg = -1;
+			c = (phs*36 +(delay*36/spd));
+			for (i = 0; i<tfg; i++)
+			{
+				fg[i][2]+=c-cfg;
+				ZoomRender(fg[i][0],200,fg[i][1],fg[i][2],getWidth(fg[i][0])*4,getHeight(fg[i][0])*4,0,0,getWidth(fg[i][0]),getHeight(fg[i][0]),0);
+				if (fg[i][2] > ymax) atfg = i;
+			}
+			cfg = c;
+			if (atfg != -1)
+			{
+				for (i = atfg; i<tfg-1; i++)
+				{
+					for (j=0;j<3;j++) fg[i][j] = fg[i+1][j];
+				}
+				tfg--;
+			}
+			if (tfg < maxfg)
+			{
+				int tt;
+				if (tfg == 0) tt = ymax;
+				else tt = fg[tfg-1][2];
+				tt = gener(4*(spd/5+ymax-tt));
+				if (tt == 0)
+				{
+					int t2;
+					t2 = 16+9+gener(2);
+					fg[tfg][0] = t2;
+					fg[tfg][2] = -4*getHeight(t2);
+					fg[tfg][1] = -getWidth(t2)*2 + gener(xmax+getWidth(t2)*4);
+					tfg++;
+				}
+			}
+		}
+}
+
+void delayCalc()
+{
+	if (bonuses[0][7] == 0)
+	{
+		if (bonuses[0][6] != 0) tdelay = scores[0][5] >> 1;
+		else if (bonuses[0][4] != 0) tdelay = scores[0][5] << 1;
+		else if (bonuses[0][5] != 0) tdelay = scores[0][5] >> 1;
+		else tdelay = scores[0][5];
+	}
+	else 
+	{
+		if (bonuses[0][6] != 0) tdelay = scores[0][5] << 1;
+		else if (bonuses[0][4] != 0) tdelay = scores[0][5] >> 1;
+		else if (bonuses[0][5] != 0) tdelay = scores[0][5] << 1;
+		else tdelay = scores[0][5];
+	}
+	if (ac5) tdelay = tdelay >> 1;
+	if (dc5) tdelay = tdelay << 1;
+
+	if (tdelay>40) tdelay = 40;
+	if (tdelay==0) tdelay = 1;
+}
+
+void Smoothing(int ole)
+{
+int i;
+for (unsigned int k = 0; k<tmult; k++)
+{
+	for (i = 0; i<3; i++)
+	{
+		if (smoothstuff[ole][i+1] < scores[ole][i]) smoothstuff[ole][i+1]++;
+		else if (smoothstuff[ole][i+1] > scores[ole][i]) smoothstuff[ole][i+1]--;
+	}
+	for (i = 0; i<3; i++)
+	{
+		if (smoothstuff[ole][i+1] < scores[ole][i]) smoothstuff[ole][i+1]++;
+		else if (smoothstuff[ole][i+1] > scores[ole][i]) smoothstuff[ole][i+1]--;
+	}
+	if (frame % 4 == 0)
+	{
+		if (smoothstuff[ole][0] < tdelay) smoothstuff[ole][0]++;
+		else if (smoothstuff[ole][0] > tdelay) smoothstuff[ole][0]--;
+	}	
+	shipmove[ole] = smoothstuff[ole][0] >> 2; 
+	if (frame % 8 == 0)
+	{
+		if (smoothstuff[ole][4] < shipmove[ole]) smoothstuff[ole][4]++;
+		else if (smoothstuff[ole][4] > shipmove[ole]) smoothstuff[ole][4]--;
+	}
+}
+}
+
+void multCalc(int ole)
+{
+int	mult=8;
+	if (bonuses[ole][7] == 0)
+	{
+		if (bonuses[ole][0] != 0) mult = mult << 1;
+		if (bonuses[ole][1] != 0) mult = mult << 2;
+		if (bonuses[ole][2] != 0) mult = mult >> 1;
+	}
+	else 
+	{
+		if (bonuses[ole][0] != 0) mult = mult >> 1;
+		if (bonuses[ole][1] != 0) mult = mult >> 2;
+		if (bonuses[ole][2] != 0) mult = mult << 1;
+	}
+	xmult[ole] = mult * tmult;
+}
+
+void generation(int ole)
+{
+unsigned long int j,t;
+	for (int k=20; k>=0; k--)
+		{
+			for (j=0; j<6; j++) map[ole][k+1][j] = map[ole][k][j];
+		}
+		for (j=0; j<6; j++) map[ole][0][j] = 0;
+		t = gener(50);
+		if (t % 4 == 0) 
+		{
+			t = gener(tways);
+			map[ole][0][t] = 1; //coin
+			doloykamni[ole] = 0;
+		}
+		else if (t % 4 == 1) 
+		{
+			if ((doloykamni[ole] < tways-1) || (tmult > 7)) 
+			{
+				t = gener(tways);
+				int t2 = gener(20);
+				map[ole][0][t] = t2<3?201+t2:200; //meteor
+				doloykamni[ole]++;
+
+			}
+			else
+			{
+				doloykamni[ole] = 0;
+			}
+
+		}
+		else if ((t == 2 || (bonuses[ole][11] !=0 && (t == 3 || t == 6 || t == 7))) && !nobonuses) 
+		{
+			t = gener(tways);
+			int t2 = gener(maxabonuses);
+			map[ole][0][t] = 100+t2; //bonus
+			doloykamni[ole] = 0;
+		}
+		else
+		{
+			doloykamni[ole] = 0;
+		}
+}
+
+void speedUpd()
+{
+if (scores[0][5] < 2) scores[0][5] = 2;
+
+		if (scores[0][4] <= 18 && scores[0][4] >= 10) scores[0][5]+=3;
+
+		if (scores[0][4] % 25 == 0)
+		{
+			if (scores[0][5] > 20 || scores[0][4] % 50 == 0)
+			{
+				if (scores[0][5] > 15 || scores[0][4] % 100 == 0)
+				{
+					if (scores[0][5] >= 24) scores[0][5]-=5;
+					else if (scores[0][5] >= 11) scores[0][5]-=2;
+					else if (scores[0][5] > 2) scores[0][5]--;
+				}
+			}
+		}
+}
+
+void bonusing(int ole)
+{
+	int i;
+	if (bonuses[0][8] == 0) for (i=0; i<maxabonuses; i++)
+		{
+			if (bonuses[ole][i] != 0) bonuses[ole][i]--;
+			if (i != 10 && bonuses[0][10] != 0 && bonuses[ole][i] != 0 && bonuses[0][7] == 0) bonuses[ole][i]--; 
+			if (i != 10 && bonuses[0][10] != 0 && bonuses[ole][i] != 0 && bonuses[0][7] != 0 && (scores[ole][4] & 1) == 0) bonuses[ole][i]++;
+
+		}
+	if (ole == 1) return;
+		if (bonuses[0][8] != 0) 
+		{
+			bonuses[ole][8]--;
+			if (bonuses[0][10] != 0 && bonuses[0][7] == 0) bonuses[0][8]--;
+			if (bonuses[0][10] != 0 && bonuses[0][7] != 0 && (scores[ole][4] & 1) == 0) bonuses[0][8]++;
+		}
+	for (i=0; i<maxabonuses; i++) if (bonuses[ole][i] < 0) bonuses[ole][i] = 0;
+}
+
+void magnetizm(int ole)
+{
+	int i;
+	if (bonuses[ole][9] != 0)
+	{
+		for (i = 0; i<tways; i++)
+		{
+			if (map[ole][17][i] == 1)
+			{
+				map[ole][17][i] = 0;
+				if (i>pos[ole]) map[ole][17][i-1] = 1;
+				else if (i<pos[ole]) map[ole][17][i+1] = 1;
+				else map[ole][17][i] = 1;
+				break;
+			}
+			else if (map[ole][17][i] == 3 && bonuses[ole][7] != 0)
+			{
+				map[ole][17][i] = 0;
+				if (i>pos[ole]) map[ole][17][i-1] = 3;
+				else if (i<pos[ole]) map[ole][17][i+1] = 3;
+				else map[ole][17][i] = 3;
+				break;
+			}
+		}
+	}
+}
+
+void triggers(int ole)
+{
+bool stand = false;
+if (map[ole][17][pos[ole]] != 0)
+	{
+		if (map[ole][17][pos[ole]] == 1) 
+		{
+			scores[ole][2]+=3*xmult[ole];
+			act[ole] = 1;
+		}
+		else if ((map[ole][17][pos[ole]] >= 200) && (map[ole][17][pos[ole]] < 300)) 
+		{
+			act[ole] = 2;
+			if (bonuses[ole][3] == 0 && bonuses[ole][6] == 0)
+			{
+				scores[ole][3]--;
+				anim[0] = 3;
+				anim[1] = 10;
+				bonuses[ole][3]+=7;
+			}
+			scores[ole][2]+=5;
+			if (map[ole][17][pos[ole]] != 200)
+			{
+				stand = true;
+				switch (map[ole][17][pos[ole]] - 200)
+				{
+				case 1: 
+					{
+						map[ole][17][pos[ole]] = 1;
+						break;
+					}
+				case 2: 
+					{
+						int t2 = gener(20);
+						map[ole][17][pos[ole]] = t2<3?201+t2:200;
+						break;
+					}
+				case 3:
+					{
+						int t2 = gener(maxabonuses);
+						map[ole][17][pos[ole]] = 100+t2;
+						break;
+					}
+				}
+			}
+		}
+		else if ((map[ole][17][pos[ole]] >= 100) && (map[ole][17][pos[ole]] < 200)) 
+		{
+			act[ole] = 3;
+			//ooohhhh yeeeeaaaahh bonuses
+			int t = map[ole][17][pos[ole]] - 100;
+			if (t == 0) //x2 coins
+			{
+				bonuses[ole][0]+=75;
+			}
+			else if (t == 1) //x4 coins 
+			{
+				bonuses[ole][1]+=40;
+			}
+			else if (t == 2) //x0.5 coins 
+			{
+				bonuses[ole][2]+=75;
+			}
+			else if (t == 3) //shield 
+			{
+				bonuses[ole][3]+=75;
+			}
+			else if (t == 4) //slowmode 
+			{
+				bonuses[0][4]+=(41-scores[0][5])*2;
+				if (bonuses[0][4] < 0) bonuses[0][4] = 0;
+			}
+			else if (t == 5) //fastmode 
+			{
+				bonuses[0][5]+=75;
+			}
+			else if (t == 6) //extreme 
+			{
+				if (pg == 1) bonuses[ole][6]+=125;
+				else 
+				{
+					bonuses[0][5]+=125;
+					bonuses[ole][3]+=125;
+				}
+			}
+			else if (t == 7) //inverse 
+			{
+				bonuses[0][7]+=150;
+			}
+			else if (t == 8) //freeze
+			{
+				bonuses[0][8]+=70;
+			}
+			else if (t == 9) //magnet 
+			{
+				bonuses[ole][9]+=75;
+			}
+			else if (t == 10) //time killer 
+			{
+				bonuses[0][10]+=50;
+			}
+			else if (t == 11) //more bonuses
+			{
+				bonuses[ole][11]+=20;
+			}
+			else if (t == 12) //life up +
+			{
+				anim[0] = 2;
+				anim[1] = 20;
+				if (bonuses[0][7] == 0) scores[ole][3]++;
+				else scores[0][3]--;
+			}
+			else if (t == 13) //life down +
+			{
+				anim[0] = 3;
+				anim[1] = 10;
+				if (bonuses[0][7] == 0 && bonuses[0][6] == 0 && bonuses[ole][3] ==0) scores[ole][3]--;
+				else scores[ole][3]++;
+				bonuses[ole][3]+=10;
+			}
+			else if (t == 14) //jackpot +
+			{
+				anim[0] = 4;
+				anim[1] = 20;
+				if (bonuses[0][7] == 0) scores[ole][2]+=500;
+				else scores[ole][2]-=500;
+			}
+			else if (t == 15) //add slow +
+			{
+				anim[0] = 5;
+				anim[1] = 20;
+				if (bonuses[0][7] == 0) scores[ole][5]+=2;
+				else scores[ole][5]-=2;
+			}
+			else if (t == 16) //viewer
+			{
+				bonuses[ole][16]+=100;
+			}
+
+		}
+		if (!stand) map[ole][17][pos[ole]] = 0;
+	}
+
+	if (scores[ole][3]>0) scores[ole][1] = scores[ole][2] + scores[ole][4];
+	if (scores[ole][0]<scores[ole][1]) scores[ole][0] = scores[ole][1];
+}
+
+void colorStuff(int frm, int spd)
+{
+	if (anim[1] != 0) anim[1]--;
+	else anim[0] = 0;
+
+	//smooth colors
+	if (frm % spd == 0 && quality>0)
+		{
+		if (cclr[1][0] > 0 && cclr[1][1] == 192)
+		{
+			cclr[1][0]--;
+			cclr[1][2]++;
+		}
+		if (cclr[1][1] > 0 && cclr[1][2] == 192)
+		{
+			cclr[1][1]--;
+			cclr[1][0]++;
+		}
+		if (cclr[1][2] > 0 && cclr[1][0] == 192)
+		{
+			cclr[1][2]--;
+			cclr[1][1]++;
+		}
+		tcfix++;
+
+		if (tcfix == 6)
+		{
+			if (cclr[0][0] > 0 && cclr[0][2] == 0)
+			{
+				cclr[0][0]--;
+				cclr[0][1]++;
+			}
+			if (cclr[0][1] > 0 && cclr[0][0] == 0)
+			{
+				cclr[0][1]--;
+				cclr[0][2]++;
+			}
+			if (cclr[0][2] > 0 && cclr[0][1] == 0)
+			{
+				cclr[0][2]--;
+				cclr[0][0]++;
+			}
+			tcfix = 0;
+		}
+	}
+}
+
+void menus()
+{
+	//pause UI
+		if (gamestate == 1)
+		{
+			DrawRect(200,tRGB(196,196,196),40,40,206,40,0);
+			DrawRect(200,tRGB(0,0,0),41,41,204,38,0);
+			PrintText(200,1,"Game Paused",tRGB(196,196,196),46,47);
+			PrintText(200,1,"Press Enter to continue",tRGB(196,196,196),46,57);
+			PrintText(200,1,"Press Esc to quit",tRGB(196,196,196),46,67);
+		}
+		//gameover UI
+		if (gamestate == 3)
+		{
+			DrawRect(200,tRGB(196,196,196),40,40,206,40,0);
+			DrawRect(200,tRGB(0,0,0),41,41,204,38,0);
+			PrintText(200,1,"Game Over",tRGB(196,196,196),46,47);
+			PrintText(200,1,"Press Esc to quit",tRGB(196,196,196),46,67);
+		}
+}
+
+void renderCoin(int f, int x, int y)
+{
+	if ((f >> 2) % 8 < 4) FragmentLayer(18,200,x,y,(12*((frame >> 2) & 3)),0,12,12,0);
+	else TransformLayer(18,200,x,y,36-(12*((frame >> 2) & 3)),0,12,12,1);
+}
+
+void renderMeteor(int f, int x, int y)
+{
+	switch ((f >> 3) % 4)
+	{
+		case 0: 
+		{
+			FragmentLayer(19,200,x,y,((f >> 1) % 4)*12,0,12,12,0);
+			break;
+		}
+		case 1: 
+		{
+			TransformLayer(19,200,x,y,((f >> 1) % 4)*12,0,12,12,6);
+			break;
+		}
+		case 2: 
+		{
+			TransformLayer(19,200,x,y,((f >> 1) % 4)*12,0,12,12,3);
+			break;
+		}
+		case 3: 
+		{
+			TransformLayer(19,200,x,y,((f >> 1) % 4)*12,0,12,12,5);
+			break;
+		}
+	}
+}
+
+void renderBonus(int f, int x, int y)
+{
+	FragmentLayer(20,200,x,y,(12*((f >> 1) % 6)),0,12,12,0);
+}					
+/////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////
+
+void ingameSP()
+{
+	char strn[64];
+	unsigned long int i,j;
+	act[0] = 0;
+
+	nobonuses=true;
+	//logic
+	if (gamestate == 0) delay++;
+
+	delayCalc();
+	Smoothing(0);
+	multCalc(0);
+
+	shipstyle[0] = 5;
+	if (scores[0][4] == 400) scores[0][5] = 4;
+
+	if (delay >= smoothstuff[0][0])
+	{
+		delay = 0;
+		scores[0][4]++;
+		//generation
+		if (scores[0][4] > 400) generation(0);	
+	}
+	triggers(0);
+
+	//gameover
+	if (scores[0][3] <= 0 && gamestate != 2)
+	{
+		gamestate = 3;
+		spgameover();
+	}
+
+	//tgs
+	if (gamestate == 2) 
+	{
+		gameover();
+		return;
+	}
+	if (gamestate == 0) gframe++;
+
+	if (frame % (frameskip+1)== 0) 
+	{
+		//rendering
+		reset(200);
+		if (scores[0][4]>=400) 
+		{
+			FDrawRect(201,tRGB(0,0,0),0,0,xmax,ymax);
+			renderBG(scores[0][4],smoothstuff[0][0],1);
+		}
+		else
+		{
+			if (gamestate == 0 && (frame % 4 ==0)) BWNoise(499,0,0,32,20);
+			ZoomRender(499,201,0,0,320,200,0,0,32,20,0);
+		}
+
+		if (scores[0][4]<=25) DrawRect(201,ARGB((25-scores[0][4])*10,0,0,0),0,20,xmax,180,2);
+		if (scores[0][4]<390 && scores[0][4]>390-255) DrawRect(201,ARGB(scores[0][4]-390+255,0,0,0),0,20,xmax,180,2);
+		if (scores[0][4]<400 && scores[0][4]>=390) FDrawRect(201,tRGB(0,0,0),0,20,xmax,180);
+		for (i=0; i<=tways; i++)
+		{
+			FDrawVLine(201, tRGB(255,255,255),160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5,0,200);
+		}
+
+		for (i=0; i<tways; i++)
+		{
+			for (j=2; j<22; j++)
+			{
+				if (map[0][j][i] == 1)
+				{
+					renderCoin(frame,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+				}
+				else if ((map[0][j][i] >= 200) && (map[0][j][i] < 300))
+				{
+					renderMeteor(frame,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+					if (bonuses[0][16]!=0)
+					{
+						if (map[0][j][i] != 200)
+						{
+							DrawFrame(200,tRGB(0,196,0),154-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-8+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],14,14);
+							FDrawRect(200,tRGB(0,0,0),155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],12,12);
+						switch (map[0][j][i]-200)
+						{
+						case 1: 
+							{
+								renderCoin(frame,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						case 2: 
+							{
+								renderMeteor(frame,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						case 3: 
+							{
+								renderBonus(frame,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						}
+						}
+					}
+				}
+				else if ((map[0][j][i] >= 100) && (map[0][j][i] < 200))
+				{
+					renderBonus(frame,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+					if (bonuses[0][16]!=0)
+					{
+						DrawFrame(200,tRGB(0,196,0),154-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-8+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],14,14);
+						FDrawRect(200,tRGB(0,0,0),155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],12,12);
+						FragmentLayer(16+6,200,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],(map[0][j][i]-100)*12,0,12,12,0);
+					}
+				}
+			}
+		}
+
+		if (smoothstuff[0][0]<=30)FragmentLayer(506,200,162-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,165-smoothstuff[0][4],(12*((frame >> 2) & 1)),(smoothstuff[0][0]-2)/2,12,14-((smoothstuff[0][0]-2)/2),1);
+		FragmentLayer(510,200,160-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,154-smoothstuff[0][4],(16*((frame >> 2) & 1)),16*shipstyle[0],16,16,0);
+		if (bonuses[0][3] != 0 || bonuses[0][6] != 0) 
+		{
+			IncludeLayer(508,200,159-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,153-smoothstuff[0][4],1);
+		}
+
+		buildLayer(202,xmax,ymax);
+		reset(202);
+		DrawRect(201,0,0,0,xmax,ymax,4);
+		IncludeLayer(200,202,0,0,3);
+		IncludeLayer(202,201,0,0,0);
+		delLayer(202);
+		reset(200);
+
+		ZoomRender(201,201,0,0,320,20,0,21,320,1,0);
+		ZoomRender(201,201,0,180,320,20,0,179,320,1,0);
+
+		VGradient(201,tRGB(255,255,255),tRGB(192,192,192),0,0,320,20,5);
+		VGradient(201,tRGB(192,192,192),tRGB(255,255,255),0,180,320,20,5);
+
+		menus();
+
+		IncludeLayer(200,201,0,0,0);
+
+		sprintf(strn,"%i | %i",fps,frameskip);
+		PrintText(201,1,strn,tRGB(255,255,255),0,0);
+		renderer(201);
+
+	}
+}
+
+
+void ingameSolo()
+{
+char strn[64];
+unsigned long int i,j,t;
+act[0] = 0;
+act[1] = 0;
+
+	//logic
+	if (gamestate == 0) delay++;
+
+	delayCalc();
+	Smoothing(0);
+	multCalc(0);
+
+	if (delay >= smoothstuff[0][0])
+	{
+		delay = 0;
+		scores[0][4]++;
+		//generation
+		generation(0);
+		// ultra multiplier
+		if (scores[0][4] % 100 == 0 && scores[0][5] == 2)
+		{
+			anim[0] = 6;
+			anim[1] = 20;
+			tmult = tmult << 1;
+
+			sprintf(strn,"x%li",tmult);
+			buildLayer(505,TextWidth(1,strn),TextHeight(1,strn));
+			PrintText(505,1,strn,tRGB(48,48,24),0,0);
+		}
+		
+	//speed modifiers
+		speedUpd();
+
+		if (
+			(level == 0 && scores[0][1] >1000) ||
+			(level == 1 && scores[0][1] >2500) ||
+			(level == 2 && scores[0][1] >5000) ||
+			(level == 3 && scores[0][1] >10000) ||
+			(level == 4 && scores[0][1] >20000)
+			)
+		{
+			anim[0] = 2;
+			anim[1] = 20;
+			scores[0][3]++;
+			level++;
+		}
+		 
+
+	// bonuses updates
+		bonusing(0);
+	}
+	if (scores[0][1] >20000 && scores[0][0]<=scores[0][1]) 
+	{
+		gs = 1;
+		SolotoSP();
+	}
+
+	magnetizm(0);
+	triggers(0);
+
+	//animations update
+	colorStuff(gframe, smoothstuff[0][0]*2);
+
+	//gameover
+	if (scores[0][3] <= 0 && gamestate != 2)
+	{
+		gamestate = 3;
+	}
+
+	//tgs
+	if (gamestate == 2) 
+	{
+		gameover();
+		return;
+	}
+
+	//game frames
+	if (gamestate == 0) gframe++;
+
+	if (frame % (frameskip+1)== 0) 
+	{
+		//rendering
+		FDrawRect(200,tRGB(cclr[0][0],cclr[0][1],cclr[0][2]),0,0,xmax,ymax);
+		//background
+		
+		renderBG(scores[0][4],smoothstuff[0][0],quality);
+
+		//hey, do you know that this game has multipliers.
+		//oh, fuck, really, we have it!
+
+		if (tmult > 1)
+		{
+			ZoomRender(505,200,xmax/4,(ymax - getHeight(505)*xmax/(2*getWidth(505)))/2,xmax/2,getHeight(505)*xmax/(2*getWidth(505)),0,0,getWidth(505),getHeight(505),1);
+		}
+
+		//ways
+		if (quality > 0) 
+		{
+			reset(509);
+			IncludeLayer(511,509,0,0,0);
+			DrawRect(509,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),0,0,12,200,2);
+			VGradient(509,tRGB(0,0,0),tRGB(128,128,128),0,200-((frame << 2) & 4095),xmax,10,1);
+			VGradient(509,tRGB(128,128,128),tRGB(0,0,0),0,210-((frame << 2) & 4095),xmax,10,1);
+		}
+		for (i=0; i<tways; i++)
+		{
+			IncludeLayer(509,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,0,1);
+		}
+		for (i=0; i<=tways; i++)
+		{
+			FDrawVLine(200, tRGB(196,196,196),160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5,0,200);
+		}
+		//objects
+		for (i=0; i<tways; i++)
+		{
+			for (j=2; j<22; j++)
+			{
+				if (map[0][j][i] == 1)
+				{
+					renderCoin(frame,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+				}
+				else if ((map[0][j][i] >= 200) && (map[0][j][i] < 300))
+				{
+					renderMeteor(frame,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+					if (bonuses[0][16]!=0)
+					{
+						if (map[0][j][i] != 200)
+						{
+							DrawFrame(200,tRGB(0,196,0),154-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-8+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],14,14);
+							FDrawRect(200,tRGB(0,0,0),155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],12,12);
+						switch (map[0][j][i]-200)
+						{
+						case 1: 
+							{
+								renderCoin(frame,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						case 2: 
+							{
+								renderMeteor(frame,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						case 3: 
+							{
+								renderBonus(frame,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						}
+						}
+					}
+				}
+				else if ((map[0][j][i] >= 100) && (map[0][j][i] < 200))
+				{
+					renderBonus(frame,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+					if (bonuses[0][16]!=0)
+					{
+						DrawFrame(200,tRGB(0,196,0),154-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-8+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],14,14);
+						FDrawRect(200,tRGB(0,0,0),155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],12,12);
+						FragmentLayer(16+6,200,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],(map[0][j][i]-100)*12,0,12,12,0);
+					}
+				}
+			}
+		}
+		//particles
+		if (quality>1)
+		{
+			EP.defcolor=css[0][2];
+			EP.spawnx = 162-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+7;
+			EP.spawny = 165-smoothstuff[0][4];
+			if (gamestate == 0)
+			{
+				if (frame % smoothstuff[0][0] == 0) EP.Spawn(500-smoothstuff[0][0]*10,270);
+				else if ((frame % (smoothstuff[0][0]/2) == 0) && (quality >= 3)) EP.Spawn(500-smoothstuff[0][0]*10,270);
+				EP.Update();
+			}
+			EP.Draw(200,level,0);
+
+			if (act[0] !=0)
+			{
+				int tt = 5*(quality==3?2:1)*xmult[0]/8;
+				AP.defcolor = tRGB(act[0]!=3?192:0,act[0]!=2?192:0,act[0]==3?192:0);
+				AP.defincolor = tRGB(act[0]!=3?255:0,act[0]!=2?255:0,act[0]==3?255:0);
+				AP.spawnx = 162-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+7;
+				AP.spawny = 152-smoothstuff[0][4];
+				for (i = 0; i<5; i++) AP.Spawn();
+			}
+
+			AP.Update();
+			AP.Draw(200,level,0);
+		}
+		//spaceship
+
+		if (smoothstuff[0][0]<=30)FragmentLayer(506,200,162-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,165-smoothstuff[0][4],(12*((frame >> 2) & 1)),(smoothstuff[0][0]-2)/2,12,14-((smoothstuff[0][0]-2)/2),1);
+		FragmentLayer(510,200,160-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,154-smoothstuff[0][4],(16*((frame >> 2) & 1)),16*shipstyle[0],16,16,0);
+		if (bonuses[0][3] != 0 || bonuses[0][6] != 0) 
+		{
+			IncludeLayer(508,200,159-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,153-smoothstuff[0][4],1);
+		}
+
+		//fg effects
+		
+		renderFG(scores[0][4],smoothstuff[0][0]);
+
+		//animations time!
+		if (anim[1] != 0)
+		{
+			if (anim[0] == 2) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,0,255,0),0,0,xmax,ymax,1);
+			else if (anim[0] == 3) DrawRect(200,ARGB(255*(10-anim[1])/10,255,0,0),0,0,xmax,ymax,1);
+			else if (anim[0] == 4) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,196,196,0),0,0,xmax,ymax,1);
+			else if (anim[0] == 5) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,0,196,196),0,0,xmax,ymax,1);
+			else if (anim[0] == 6) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,255,255,255),0,0,xmax,ymax,1);
+		}
+
+		//bonuses UI
+		t = 0;
+		for (i = 0; i<maxabonuses; i++)
+		{
+			if (bonuses[0][i] != 0)
+			{
+				int tt;
+				if (bonuses[0][i] > 100) 
+				{
+					DrawFrame(200,tRGB(0,196,0),50,20+t*20,54,18);
+					tt = 100;
+				}
+				else 
+				{
+					DrawFrame(200,tRGB(196,196,196),50,20+t*20,54,18);
+					tt = bonuses[0][i];
+				}
+				FDrawRect(200,tRGB(0,0,0),51,21+t*20,52,16);
+				FDrawRect(200,tRGB(0,196,0),52,22+t*20,14,14);
+				FDrawRect(200,tRGB(0,0,0),53,23+t*20,12,12);
+				FragmentLayer(16+6,200,53,23+t*20,i*12,0,12,12,0);
+				FragmentLayer(507,200,67,23+t*20,0,0,36*tt/100,12,0);
+				t++;
+			}
+		}
+
+		//UI
+		reset(201);
+		if (quality == 0) FDrawRect(201,tRGB(0,0,0),0,180,320,20);
+		else if (quality == 3) VGradient(201,ARGB(224,0,0,0),ARGB(64,0,0,0),0,180,320,20,0);
+		else DrawRect(201,ARGB(127,0,0,0),0,180,320,20);
+		IncludeLayer(21,201,57,183,0);
+		PrintNum(201,2,smoothstuff[0][1],tRGB(196,196,196),85,191,6);
+		if (scores[0][0] == scores[0][1]) DrawRect(201,tRGB(0,196,0),57,191,57,6,2);
+		PrintNum(201,2,smoothstuff[0][2],tRGB(196,196,196),166,191,6);
+		PrintNum(201,2,smoothstuff[0][3],tRGB(196,196,196),85,183,6);
+		PrintNum(201,2,scores[0][3],tRGB(196,196,196),234,183,6);
+		PrintNum(201,2,scores[0][4],tRGB(196,196,196),166,183,6);
+		PrintNum(201,2,smoothstuff[0][0],tRGB(196,196,196),234,191,6);
+		if (shipstyle[0] == 5)
+		{	
+			if (quality == 0) FDrawRect(201,tRGB(0,0,0),0,0,20,180);
+			else if (quality == 3) DrawRect(201,ARGB(224,0,0,0),0,0,20,180);
+			else DrawRect(201,ARGB(127,0,0,0),0,0,20,180);
+			if (quality == 0) FDrawRect(201,tRGB(0,0,0),300,0,20,180);
+			else if (quality == 3) DrawRect(201,ARGB(224,0,0,0),300,0,20,180);
+			else DrawRect(201,ARGB(127,0,0,0),300,0,20,180);
+			FDrawHLine(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),20,180,280);
+			FDrawVLine(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),20,0,200);
+			FDrawVLine(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),299,0,200);
+			FragmentLayer(504,201,0,smoothstuff[0][0]*4,0,smoothstuff[0][0]*4,20,200-smoothstuff[0][0]*4,0);
+			FragmentLayer(504,201,300,smoothstuff[0][0]*4,0,smoothstuff[0][0]*4,20,200-smoothstuff[0][0]*4,0);
+		}
+		else FDrawHLine(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),0,180,320);
+
+		IncludeLayer(201,200,0,0,0);
+
+		if (bonuses[0][7] != 0) DrawRect(200,0,0,0,xmax,ymax,4);
+		if (bonuses[0][10] != 0) 
+		{
+			DoGray(200,200,0,0,0);
+		}
+		else if (bonuses[0][8] != 0) 
+		{
+			DoGray(200,200,254,0,0);
+			if (quality > 1) DrawRect(200,tRGB(192,255,255),0,0,xmax,ymax,2);
+		}
+
+		menus();
+
+		sprintf(strn,"%i | %i",fps,frameskip);
+		PrintText(200,1,strn,tRGB(255,255,255),0,0);
+		renderer(200);
+	}
+}
+
+////////////////////////////////////////////////
+
+////////////////////////////////////////////////
+
+////////////////////////////////////////////////
+
+////////////////////////////////////////////////
+
+void ingame2P()
+{
+char strn[64];
+unsigned long int i,j,t;
+act[0] = 0;
+act[1] = 0;
+	//logic
+	if (gamestate == 0) delay++;
+
+	delayCalc();
+	Smoothing(0);
+	Smoothing(1);
+	multCalc(0);
+	multCalc(1);
+
+	if (delay >= smoothstuff[0][0])
+	{
+		delay = 0;
+		scores[0][4]++;
+		scores[1][4]++;
+		//generation
+		if (scores[0][3] > 0) generation(0);
+		if (scores[1][3] > 0) generation(1);
+	
+	//speed modifiers
+		speedUpd();
+
+	// bonuses updates
+		if (scores[0][3] > 0) bonusing(0);
+		if (scores[1][3] > 0) bonusing(1);
+	}
+
+	
+	if (scores[0][3] > 0) 
+	{
+		triggers(0);
+		magnetizm(0);
+	}
+	if (scores[1][3] > 0) 
+	{
+		triggers(1);
+		magnetizm(1);
+	}
+
+	//animations update
+	colorStuff(gframe, smoothstuff[0][0]*2);
+
+	//gameover
+	if (scores[0][3] <= 0 && scores[1][3] <= 0 && gamestate != 2)
+	{
+		gamestate = 3;
+	}
+
+	//tgs
+	if (gamestate == 2) 
+	{
+		gameover();
+		return;
+	}
+
+	//game frames
+	if (gamestate == 0) gframe++;
+
+	if (frame % (frameskip+1)== 0) 
+	{
+		//rendering
+		FDrawRect(200,tRGB(cclr[0][0],cclr[0][1],cclr[0][2]),0,0,xmax,ymax);
+		//background
+		
+		renderBG(scores[0][4],smoothstuff[0][0],quality);
+
+		//ways
+		if (quality > 0) 
+		{
+			reset(509);
+			IncludeLayer(511,509,0,0,0);
+			DrawRect(509,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),0,0,12,215,2);
+			VGradient(509,tRGB(0,0,0),tRGB(128,128,128),0,215-((frame << 2) & 4095),xmax,10,1);
+			VGradient(509,tRGB(128,128,128),tRGB(0,0,0),0,225-((frame << 2) & 4095),xmax,10,1);
+		}
+		for (i=0; i<tways; i++)
+		{
+			IncludeLayer(509,200,100-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,0,1);
+			IncludeLayer(509,200,215-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,0,1);
+		}
+		for (i=0; i<=tways; i++)
+		{
+			FDrawVLine(200, tRGB(196,196,196),100-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5,0,200);
+			FDrawVLine(200, tRGB(196,196,196),215-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5,0,200);
+		}
+		//objects
+		int ole;
+		for (ole=0; ole<pg; ole++)
+		{
+			if (scores[ole][3] <= 0) continue;
+		for (i=0; i<tways; i++)
+		{
+			for (j=2; j<22; j++)
+			{
+				if (map[ole][j][i] == 1)
+				{
+					renderCoin(frame,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4]);
+				}
+				else if ((map[ole][j][i] >= 200) && (map[ole][j][i] < 300))
+				{
+					renderMeteor(frame,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4]);
+					if (bonuses[ole][16]!=0)
+					{
+						if (map[ole][j][i] != 200)
+						{
+							DrawFrame(200,tRGB(0,196,0),22+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-8+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],14,14);
+							FDrawRect(200,tRGB(0,0,0),23+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],12,12);
+						switch (map[ole][j][i]-200)
+						{
+						case 1: 
+							{
+								renderCoin(frame,23+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						case 2: 
+							{
+								renderMeteor(frame,23+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						case 3: 
+							{
+								renderBonus(frame,23+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4]);
+								break;
+							}
+						}
+						}
+					}
+				}
+				else if ((map[ole][j][i] >= 100) && (map[ole][j][i] < 200))
+				{
+					renderBonus(frame,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4]);
+					if (bonuses[ole][16]!=0)
+					{
+						DrawFrame(200,tRGB(0,196,0),22+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-8+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],14,14);
+						FDrawRect(200,tRGB(0,0,0),23+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],12,12);
+						FragmentLayer(16+6,200,23+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],(map[ole][j][i]-100)*12,0,12,12,0);
+					}
+				}
+			}
+		}
+		}
+		for (ole=0; ole<pg; ole++)
+		{
+		//particles
+		if (quality>1)
+		{
+			EP.defcolor=css[ole][2];
+			EP.spawnx = 102+115*ole-(tways*12+(tways+1)*5)/2+pos[ole]*12+(pos[ole]+1)*5+7;
+			EP.spawny = 165-smoothstuff[0][4];
+			if (gamestate == 0)
+			{
+				if (frame % smoothstuff[0][0] == 0) EP.Spawn(500-smoothstuff[0][0]*10,270);
+				if ((frame % (smoothstuff[0][0]/2) == 0) && (quality >= 3)) EP.Spawn(500-smoothstuff[0][0]*10,270);
+				EP.Update();
+			}
+			EP.Draw(200,level,0);
+
+			if (act[ole] !=0)
+			{
+				int tt = 5*(quality==3?2:1)*xmult[ole]/8;
+				AP.defcolor = tRGB(act[ole]!=3?192:0,act[ole]!=2?192:0,act[ole]==3?192:0);
+				AP.defincolor = tRGB(act[ole]!=3?255:0,act[ole]!=2?255:0,act[ole]==3?255:0);
+				AP.spawnx = 102+115*ole-(tways*12+(tways+1)*5)/2+pos[ole]*12+(pos[ole]+1)*5+7;
+				AP.spawny = 152-smoothstuff[0][4];
+				for (i = 0; i<5; i++) AP.Spawn();
+			}
+
+			AP.Update();
+			AP.Draw(200,level,0);
+		}
+
+		//spaceship
+		if (smoothstuff[0][0]<=30 && scores[ole][3] > 0) FragmentLayer(506-ole*100,200,102+115*ole-(tways*12+(tways+1)*5)/2+pos[ole]*12+(pos[ole]+1)*5+1,165-smoothstuff[ole][4],(12*((frame >> 2) & 1)),(smoothstuff[0][0]-2)/2,12,14-((smoothstuff[ole][0]-2)/2),1);
+		FragmentLayer(510-ole*100,200,100+115*ole-(tways*12+(tways+1)*5)/2+pos[ole]*12+(pos[ole]+1)*5+1,154-smoothstuff[ole][4],(16*((frame >> 2) & 1)),16*shipstyle[ole],16,16,0);
+		if ((bonuses[ole][3] != 0 || bonuses[ole][6] != 0) && scores[ole][3] > 0) 
+		{
+			IncludeLayer(508-ole*100,200,99+115*ole-(tways*12+(tways+1)*5)/2+pos[ole]*12+(pos[ole]+1)*5+1,153-smoothstuff[ole][4],1);
+		}
+		}
+
+		//fg effects
+		
+		renderFG(scores[0][4],smoothstuff[0][0]);
+
+		//animations time!
+		if (anim[1] != 0)
+		{
+			if (anim[0] == 2) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,0,255,0),0,0,xmax,ymax,1);
+			else if (anim[0] == 3) DrawRect(200,ARGB(255*(10-anim[1])/10,255,0,0),0,0,xmax,ymax,1);
+			else if (anim[0] == 4) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,196,196,0),0,0,xmax,ymax,1);
+			else if (anim[0] == 5) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,0,196,196),0,0,xmax,ymax,1);
+			else if (anim[0] == 6) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,255,255,255),0,0,xmax,ymax,1);
+		}
+		
+		FDrawRect(200,tRGB(192,192,192),159,0,2,200);
+
+		//bonuses UI
+		for (ole = 0; ole<pg; ole++) 
+		{
+		if (scores[ole][3] <= 0) continue;
+		int ot = 0;
+		int et = 0;
+		for (i = 0; i<maxabonuses; i++)
+		{
+			if (bonuses[ole][i] != 0)
+			{
+				int xa;
+				if (i == 4 || i == 5 || i == 7 || i == 8 || i == 10) 
+				{
+					t = ot;
+					ot++;
+					xa = 133;
+				}
+				else 
+				{	
+					t = et;
+					et++;
+					xa = 10+236*ole;
+				}
+				int tt;
+				if (bonuses[ole][i] > 100) 
+				{
+					DrawFrame(200,tRGB(0,196,0),xa,20+t*20,54,18);
+					tt = 100;
+				}
+				else 
+				{
+					DrawFrame(200,tRGB(196,196,196),xa,20+t*20,54,18);
+					tt = bonuses[ole][i];
+				}
+				FDrawRect(200,tRGB(0,0,0),xa+1,21+t*20,52,16);
+				FDrawRect(200,tRGB(0,196,0),xa+2,22+t*20,14,14);
+				FDrawRect(200,tRGB(0,0,0),xa+3,23+t*20,12,12);
+				FragmentLayer(16+6,200,xa+3,23+t*20,i*12,0,12,12,0);
+				FragmentLayer(507,200,xa+17,23+t*20,0,0,36*tt/100,12,0);
+			}
+		}
+		}
+
+		//UI
+		reset(201);
+		if (quality == 0) 
+		{
+			FDrawRect(201,tRGB(0,0,0),0,152,72,48);
+			FDrawRect(201,tRGB(0,0,0),249,152,72,48);
+		}
+		else 
+		{
+			DrawRect(201,ARGB(127,0,0,0),0,152,72,48);
+			DrawRect(201,ARGB(127,0,0,0),249,152,72,48);
+		}
+		IncludeLayer(16+23,201,0,153,0);
+		if (scores[0][1]>scores[1][1]) PrintNum(201,2,smoothstuff[0][2],tRGB(128,224,128),42,153,6);
+		else PrintNum(201,2,smoothstuff[0][2],tRGB(224,224,192),42,153,6);
+		if (scores[1][1]>scores[0][1]) PrintNum(201,2,smoothstuff[1][2],tRGB(128,224,128),250,153,6);
+		else PrintNum(201,2,smoothstuff[1][2],tRGB(224,224,192),250,153,6);
+		if (scores[0][3] > 0) 
+		{
+			PrintNum(201,2,smoothstuff[0][3],tRGB(224,224,192),42,163,6);
+			PrintNum(201,2,scores[0][3],tRGB(224,224,192),42,183,6);
+			PrintNum(201,2,scores[0][4],tRGB(224,224,192),42,173,6);
+			PrintNum(201,2,smoothstuff[0][0],tRGB(224,224,192),42,193,6);
+		}
+		if (scores[1][3] > 0) 
+		{
+			PrintNum(201,2,smoothstuff[1][3],tRGB(224,224,192),250,163,6);
+			PrintNum(201,2,scores[1][3],tRGB(224,224,192),250,183,6);
+			PrintNum(201,2,scores[1][4],tRGB(224,224,192),250,173,6);
+			PrintNum(201,2,smoothstuff[1][0],tRGB(224,224,192),250,193,6);
+		}
+		DrawFrame(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),-1,151,74,50);
+		DrawFrame(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),248,151,74,50);
+		IncludeLayer(201,200,0,0,0);
+
+		if (bonuses[0][7] != 0) DrawRect(200,0,0,0,xmax,ymax,4);
+		if (bonuses[0][10] != 0) 
+		{
+			DoGray(200,200,0,0,0);
+		}
+		else if (bonuses[0][8] != 0) 
+		{
+			DoGray(200,200,254,0,0);
+			if (quality > 1) DrawRect(200,tRGB(192,255,255),0,0,xmax,ymax,2);
+		}
+
+		menus();
+
+		sprintf(strn,"%i | %i",fps,frameskip);
+		PrintText(200,1,strn,tRGB(255,255,255),0,0);
+		renderer(200);
+	}
+}
+
+
+/////////////////////////////////////////////////////////////
+
 void MM()
 {
 	int cl;
 	char strn[64];
-	DrawRect(200,tRGB(0,0,0),0,0,xmax,ymax);
+	colorStuff(frame,2);
+	FDrawRect(200,tRGB(cclr[0][0],cclr[0][1],cclr[0][2]),0,0,xmax,ymax); 
+	renderBG(frame/2,2,quality);
+	renderFG(frame/2,2);
+	DrawRect(200,ARGB(64,0,0,0),0,0,xmax,ymax);
 	if (inmenu==1) //Main menu
 	{
 		selmax = 5;
@@ -522,7 +1885,7 @@ void MM()
 		}
 		sprintf(strn,"Player %i",ccss+1);
 		PrintText(200,1,strn,inmenu_color,40,60);
-		DrawRect(510,tRGB(127,127,127),0,0,32,80);
+		DrawRect(510,tRGB(127,127,127),0,0,32,96);
 		MascedLayer(17,510,0,0,ttcss[0],ttcss[1],ttcss[2]);
 		ZoomRender(510,200,180,40,120,120,(16*((frame >> 2) & 1)),16*tshipstyle,16,16,0);
 	}
@@ -547,7 +1910,7 @@ void MM()
 			else sprintf(strn,"Blue (%i)",db);
 			PrintText(200,1,strn,cl,36,80+i*15);
 		}
-		DrawRect(510,tRGB(127,127,127),0,0,32,80);
+		DrawRect(510,tRGB(127,127,127),0,0,32,96);
 		if (inmenu == 121) MascedLayer(17,510,0,0,tcss,ttcss[1],ttcss[2]);
 		else if (inmenu == 122) MascedLayer(17,510,0,0,ttcss[0],tcss,ttcss[2]);
 		else MascedLayer(17,510,0,0,ttcss[0],ttcss[1],tcss);
@@ -573,11 +1936,11 @@ void MM()
 			}
 			PrintText(200,1,str[i+39],cl,40,80+i*15);
 		}
-		DrawRect(510,tRGB(127,127,127),0,0,32,80);
+		DrawRect(510,tRGB(127,127,127),0,0,32,96);
 		MascedLayer(17,510,0,0,ttcss[0],ttcss[1],ttcss[2]);
 		ZoomRender(510,200,180,40,120,120,(16*((frame >> 2) & 1)),16*(sel-1),16,16,0);
 	}
-	if (inmenu>=1241 && inmenu<=1245)
+	if (inmenu>=1241 && inmenu<=1246)
 	{
 		tshipstyle = (inmenu % 10) -1;
 		inmenu = 12;
@@ -722,6 +2085,7 @@ void MM()
 	}
 	if (inmenu==1433)
 	{
+		frame = 0;
 		inmenu = 143;
 		modif = 3;
 	}
@@ -764,1018 +2128,6 @@ void MM()
 	if (frame % (frameskip+1)== 0) renderer(200);
 
 }
-
-//////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////
-
-void renderBG()
-{
-	int i, j;
-	if (quality>0) //stars
-		{
-			c = (scores[0][4]*2 +(delay*2/smoothstuff[0][0]))% ymax;
-			for (i = 0; i<sz; i++)
-			{
-				if (mas[1][i]+c<ymax) plot(200, mas[0][i],mas[1][i]+c, 4282400832);
-				else plot(200, mas[0][i],mas[1][i]+c-ymax, 4282400832);
-			}
-			c = (scores[0][4]*3 +(delay*3/smoothstuff[0][0]))% ymax;
-			for (i = 0; i<sz; i++)
-			{
-				if (mas[1][i]+c<ymax) plot(200, xmax-mas[0][i],mas[1][i]+c, 4286611584);
-				else plot(200, xmax-mas[0][i],mas[1][i]+c-ymax, 4286611584);
-			}
-			c = (scores[0][4]*6 +(delay*6/smoothstuff[0][0]))% ymax;
-			for (i = 0; i<sz; i++)
-			{
-				if (-mas[1][i]+c<0) plot(200, mas[0][i],ymax-mas[1][i]+c, 4291085508);
-				else plot(200, mas[0][i],-mas[1][i]+c, 4291085508);
-			}
-		}
-
-		if (quality>1) //bg objects
-		{
-			int atbg = -1;
-			c = (scores[0][4]*8 +(delay*8/smoothstuff[0][0]));
-			for (i = 0; i<tbg; i++)
-			{
-				bg[i][2]+=c-cbg;
-				TransformLayer(bg[i][0],200,bg[i][1],bg[i][2],0,0,getWidth(bg[i][0]),getHeight(bg[i][0]),3);
-				if (bg[i][2] > ymax) atbg = i;
-			}
-			cbg = c;
-			if (atbg != -1)
-			{
-				for (i = atbg; i<tbg-1; i++)
-				{
-					for (j=0;j<3;j++) bg[i][j] = bg[i+1][j];
-				}
-				tbg--;
-			}
-			if (tbg < maxbg)
-			{
-				int tt;
-				if (tbg == 0) tt = ymax;
-				else tt = bg[tbg-1][2];
-				tt = gener(6*(smoothstuff[0][0]/4+ymax-tt));
-				if (tt == 0)
-				{
-					int t2;
-					t2 = 16+9+gener(14);
-					bg[tbg][0] = t2;
-					bg[tbg][2] = -getHeight(t2);
-					bg[tbg][1] = -getWidth(t2)/2 + gener(xmax+getWidth(t2));
-					tbg++;
-				}
-			}
-		}
-}
-
-void renderFG()
-{
-	int i, j;
-	if (quality>1) //objects
-		{
-			int atfg = -1;
-			c = (scores[0][4]*36 +(delay*36/smoothstuff[0][0]));
-			for (i = 0; i<tfg; i++)
-			{
-				fg[i][2]+=c-cfg;
-				ZoomRender(fg[i][0],200,fg[i][1],fg[i][2],getWidth(fg[i][0])*4,getHeight(fg[i][0])*4,0,0,getWidth(fg[i][0]),getHeight(fg[i][0]),0);
-				if (fg[i][2] > ymax) atfg = i;
-			}
-			cfg = c;
-			if (atfg != -1)
-			{
-				for (i = atfg; i<tfg-1; i++)
-				{
-					for (j=0;j<3;j++) fg[i][j] = fg[i+1][j];
-				}
-				tfg--;
-			}
-			if (tfg < maxfg)
-			{
-				int tt;
-				if (tfg == 0) tt = ymax;
-				else tt = fg[tfg-1][2];
-				tt = gener(4*(smoothstuff[0][0]/5+ymax-tt));
-				if (tt == 0)
-				{
-					int t2;
-					t2 = 16+9+gener(2);
-					fg[tfg][0] = t2;
-					fg[tfg][2] = -4*getHeight(t2);
-					fg[tfg][1] = -getWidth(t2)*2 + gener(xmax+getWidth(t2)*4);
-					tfg++;
-				}
-			}
-		}
-}
-
-void delayCalc()
-{
-	if (bonuses[0][7] == 0)
-	{
-		if (bonuses[0][6] != 0) tdelay = scores[0][5] >> 1;
-		else if (bonuses[0][4] != 0) tdelay = scores[0][5] << 1;
-		else if (bonuses[0][5] != 0) tdelay = scores[0][5] >> 1;
-		else tdelay = scores[0][5];
-	}
-	else 
-	{
-		if (bonuses[0][6] != 0) tdelay = scores[0][5] << 1;
-		else if (bonuses[0][4] != 0) tdelay = scores[0][5] >> 1;
-		else if (bonuses[0][5] != 0) tdelay = scores[0][5] << 1;
-		else tdelay = scores[0][5];
-	}
-
-	if (tdelay>40) tdelay = 40;
-}
-
-void Smoothing(int ole)
-{
-int i;
-for (unsigned int k = 0; k<tmult; k++)
-{
-	for (i = 0; i<3; i++)
-	{
-		if (smoothstuff[ole][i+1] < scores[ole][i]) smoothstuff[ole][i+1]++;
-		else if (smoothstuff[ole][i+1] > scores[ole][i]) smoothstuff[ole][i+1]--;
-	}
-	for (i = 0; i<3; i++)
-	{
-		if (smoothstuff[ole][i+1] < scores[ole][i]) smoothstuff[ole][i+1]++;
-		else if (smoothstuff[ole][i+1] > scores[ole][i]) smoothstuff[ole][i+1]--;
-	}
-	if (frame % 4 == 0)
-	{
-		if (smoothstuff[ole][0] < tdelay) smoothstuff[ole][0]++;
-		else if (smoothstuff[ole][0] > tdelay) smoothstuff[ole][0]--;
-	}	
-	shipmove[ole] = smoothstuff[ole][0] >> 2; 
-	if (frame % 8 == 0)
-	{
-		if (smoothstuff[ole][4] < shipmove[ole]) smoothstuff[ole][4]++;
-		else if (smoothstuff[ole][4] > shipmove[ole]) smoothstuff[ole][4]--;
-	}
-}
-}
-
-void multCalc(int ole)
-{
-int	mult=8;
-	if (bonuses[ole][7] == 0)
-	{
-		if (bonuses[ole][0] != 0) mult = mult << 1;
-		if (bonuses[ole][1] != 0) mult = mult << 2;
-		if (bonuses[ole][2] != 0) mult = mult >> 1;
-	}
-	else 
-	{
-		if (bonuses[ole][0] != 0) mult = mult >> 1;
-		if (bonuses[ole][1] != 0) mult = mult >> 2;
-		if (bonuses[ole][2] != 0) mult = mult << 1;
-	}
-	xmult[ole] = mult * tmult;
-}
-
-void generation(int ole)
-{
-unsigned long int j,t;
-	for (int k=20; k>=0; k--)
-		{
-			for (j=0; j<6; j++) map[ole][k+1][j] = map[ole][k][j];
-		}
-		for (j=0; j<6; j++) map[ole][0][j] = 0;
-		t = gener(50);
-		if (t % 4 == 0) 
-		{
-			t = gener(tways);
-			map[ole][0][t] = 1; //coin
-			doloykamni[ole] = 0;
-		}
-		else if (t % 4 == 1) 
-		{
-			if ((doloykamni[ole] < tways-1) || (tmult > 7)) 
-			{
-				t = gener(tways);
-				map[ole][0][t] = 2; //meteor
-				doloykamni[ole]++;
-			}
-			else
-			{
-				doloykamni[ole] = 0;
-			}
-
-		}
-		else if (t == 2 || (bonuses[ole][11] !=0 && (t == 3 || t == 6 || t == 7))) 
-		{
-			t = gener(tways);
-			int t2 = gener(maxabonuses);
-			map[ole][0][t] = 100+t2; //bonus
-			doloykamni[ole] = 0;
-		}
-		else
-		{
-			doloykamni[ole] = 0;
-		}
-}
-
-void speedUpd()
-{
-if (scores[0][5] < 2) scores[0][5] = 2;
-
-		if (scores[0][4] <= 18 && scores[0][4] >= 10) scores[0][5]+=3;
-
-		if (scores[0][4] % 25 == 0)
-		{
-			if (scores[0][5] > 20 || scores[0][4] % 50 == 0)
-			{
-				if (scores[0][5] > 15 || scores[0][4] % 100 == 0)
-				{
-					if (scores[0][5] >= 24) scores[0][5]-=5;
-					else if (scores[0][5] >= 11) scores[0][5]-=2;
-					else if (scores[0][5] > 2) scores[0][5]--;
-				}
-			}
-		}
-}
-
-void bonusing(int ole)
-{
-	int i;
-	if (bonuses[0][8] == 0) for (i=0; i<maxabonuses; i++)
-		{
-			if (bonuses[ole][i] != 0) bonuses[ole][i]--;
-			if (i != 10 && bonuses[0][10] != 0 && bonuses[ole][i] != 0 && bonuses[0][7] == 0) bonuses[ole][i]--; 
-			if (i != 10 && bonuses[0][10] != 0 && bonuses[ole][i] != 0 && bonuses[0][7] != 0 && (scores[ole][4] & 1) == 0) bonuses[ole][i]++;
-
-		}
-	if (ole == 1) return;
-		if (bonuses[0][8] != 0) 
-		{
-			bonuses[ole][8]--;
-			if (bonuses[0][10] != 0 && bonuses[0][7] == 0) bonuses[0][8]--;
-			if (bonuses[0][10] != 0 && bonuses[0][7] != 0 && (scores[ole][4] & 1) == 0) bonuses[0][8]++;
-		}
-}
-
-void magnetizm(int ole)
-{
-	int i;
-	if (bonuses[ole][9] != 0)
-	{
-		for (i = 0; i<tways; i++)
-		{
-			if (map[ole][17][i] == 1)
-			{
-				map[ole][17][i] = 0;
-				if (i>pos[ole]) map[ole][17][i-1] = 1;
-				else if (i<pos[ole]) map[ole][17][i+1] = 1;
-				else map[ole][17][i] = 1;
-				break;
-			}
-			else if (map[ole][17][i] == 3 && bonuses[ole][7] != 0)
-			{
-				map[ole][17][i] = 0;
-				if (i>pos[ole]) map[ole][17][i-1] = 3;
-				else if (i<pos[ole]) map[ole][17][i+1] = 3;
-				else map[ole][17][i] = 3;
-				break;
-			}
-		}
-	}
-}
-
-void triggers(int ole)
-{
-if (map[ole][17][pos[ole]] != 0)
-	{
-		if (map[ole][17][pos[ole]] == 1) 
-		{
-			scores[ole][2]+=2.5*xmult[ole];
-		}
-		else if (map[ole][17][pos[ole]] == 2) 
-		{
-			if (bonuses[ole][3] == 0 && bonuses[ole][6] == 0)
-			{
-				scores[ole][3]--;
-				anim[0] = 3;
-				anim[1] = 10;
-				bonuses[ole][3]+=7;
-			}
-			else scores[ole][2]+=5;
-		}
-		else if ((map[ole][17][pos[ole]] >= 100) && (map[ole][17][pos[ole]] < 200)) 
-		{
-			//ooohhhh yeeeeaaaahh bonuses
-			int t = map[ole][17][pos[ole]] - 100;
-			if (t == 0) //x2 coins
-			{
-				bonuses[ole][0]+=75;
-			}
-			else if (t == 1) //x4 coins 
-			{
-				bonuses[ole][1]+=40;
-			}
-			else if (t == 2) //x0.5 coins 
-			{
-				bonuses[ole][2]+=75;
-			}
-			else if (t == 3) //shield 
-			{
-				bonuses[ole][3]+=75;
-			}
-			else if (t == 4) //slowmode 
-			{
-				bonuses[0][4]+=(41-scores[0][5])*2;
-				if (bonuses[0][4] < 0) bonuses[0][4] = 0;
-			}
-			else if (t == 5) //fastmode 
-			{
-				bonuses[0][5]+=75;
-			}
-			else if (t == 6) //extreme 
-			{
-				if (pg == 1) bonuses[ole][6]+=125;
-				else 
-				{
-					bonuses[0][5]+=125;
-					bonuses[ole][3]+=125;
-				}
-			}
-			else if (t == 7) //inverse 
-			{
-				bonuses[0][7]+=150;
-			}
-			else if (t == 8) //freeze
-			{
-				bonuses[0][8]+=70;
-			}
-			else if (t == 9) //magnet 
-			{
-				bonuses[ole][9]+=75;
-			}
-			else if (t == 10) //time killer 
-			{
-				bonuses[0][10]+=50;
-			}
-			else if (t == 11) //more bonuses
-			{
-				bonuses[ole][11]+=20;
-			}
-			else if (t == 12) //life up +
-			{
-				anim[0] = 2;
-				anim[1] = 20;
-				if (bonuses[ole][7] == 0) scores[ole][3]++;
-				else scores[ole][3]--;
-			}
-			else if (t == 13) //life down +
-			{
-				anim[0] = 3;
-				anim[1] = 10;
-				if (bonuses[ole][7] == 0 && bonuses[ole][6] == 0 && bonuses[ole][3] ==0) scores[ole][3]--;
-				else scores[ole][3]++;
-				bonuses[ole][3]+=10;
-			}
-			else if (t == 14) //jackpot +
-			{
-				anim[0] = 4;
-				anim[1] = 20;
-				if (bonuses[ole][7] == 0) scores[ole][2]+=500;
-				else scores[ole][2]-=500;
-			}
-			else if (t == 15) //add slow +
-			{
-				anim[0] = 5;
-				anim[1] = 20;
-				if (bonuses[ole][7] == 0) scores[ole][5]+=2;
-				else scores[ole][5]-=2;
-			}
-			else if (t == 16) //viewer
-			{
-				bonuses[ole][16]+=100;
-			}
-
-		}
-		map[ole][17][pos[ole]] = 0;
-	}
-
-	if (scores[ole][3]>0) scores[ole][1] = scores[ole][2] + scores[ole][4];
-	if (scores[ole][0]<scores[ole][1]) scores[ole][0] = scores[ole][1];
-}
-
-void colorStuff()
-{
-	if (anim[1] != 0) anim[1]--;
-	else anim[0] = 0;
-
-	//smooth colors
-	if (gframe % smoothstuff[0][0]*2 == 0 && quality>0)
-		{
-		if (cclr[1][0] > 0 && cclr[1][1] == 192)
-		{
-			cclr[1][0]--;
-			cclr[1][2]++;
-		}
-		if (cclr[1][1] > 0 && cclr[1][2] == 192)
-		{
-			cclr[1][1]--;
-			cclr[1][0]++;
-		}
-		if (cclr[1][2] > 0 && cclr[1][0] == 192)
-		{
-			cclr[1][2]--;
-			cclr[1][1]++;
-		}
-		tcfix++;
-
-		if (tcfix == 6)
-		{
-			if (cclr[0][0] > 0 && cclr[0][2] == 0)
-			{
-				cclr[0][0]--;
-				cclr[0][1]++;
-			}
-			if (cclr[0][1] > 0 && cclr[0][0] == 0)
-			{
-				cclr[0][1]--;
-				cclr[0][2]++;
-			}
-			if (cclr[0][2] > 0 && cclr[0][1] == 0)
-			{
-				cclr[0][2]--;
-				cclr[0][0]++;
-			}
-			tcfix = 0;
-		}
-	}
-}
-
-void menus()
-{
-	//pause UI
-		if (gamestate == 1)
-		{
-			DrawRect(200,tRGB(196,196,196),40,40,206,40,0);
-			DrawRect(200,tRGB(0,0,0),41,41,204,38,0);
-			PrintText(200,1,"Game Paused",tRGB(196,196,196),46,47);
-			PrintText(200,1,"Press Enter to continue",tRGB(196,196,196),46,57);
-			PrintText(200,1,"Press Esc to quit",tRGB(196,196,196),46,67);
-		}
-		//gameover UI
-		if (gamestate == 3)
-		{
-			DrawRect(200,tRGB(196,196,196),40,40,206,40,0);
-			DrawRect(200,tRGB(0,0,0),41,41,204,38,0);
-			PrintText(200,1,"Game Over",tRGB(196,196,196),46,47);
-			PrintText(200,1,"Press Esc to quit",tRGB(196,196,196),46,67);
-		}
-}
-/////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////
-
-
-void ingameSolo()
-{
-char strn[64];
-unsigned long int i,j,t;
-
-	//logic
-	if (gamestate == 0) delay++;
-
-	delayCalc();
-	Smoothing(0);
-	multCalc(0);
-
-	if (delay >= smoothstuff[0][0])
-	{
-		delay = 0;
-		scores[0][4]++;
-		//generation
-		generation(0);
-	// ultra multiplier
-		if (scores[0][4] % 100 == 0 && scores[0][5] == 2)
-		{
-			anim[0] = 6;
-			anim[1] = 20;
-			tmult = tmult << 1;
-
-			sprintf(strn,"x%li",tmult);
-			buildLayer(505,TextWidth(1,strn),TextHeight(1,strn));
-			PrintText(505,1,strn,tRGB(48,48,24),0,0);
-		}
-		
-	//speed modifiers
-		speedUpd();
-
-		if (level == 0 && scores[0][1] >1000)
-		{
-			anim[0] = 2;
-			anim[1] = 20;
-			scores[0][3]++;
-			level++;
-		}
-		else if (level == 1 && scores[0][1] >2500)
-		{
-			anim[0] = 2;
-			anim[1] = 20;
-			scores[0][3]++;
-			level++;
-		}
-		else if (level == 2 && scores[0][1] >5000)
-		{
-			anim[0] = 2;
-			anim[1] = 20;
-			scores[0][3]++;
-			level++;
-		}
-		else if (level == 3 && scores[0][1] >10000)
-		{
-			anim[0] = 2;
-			anim[1] = 20;
-			scores[0][3]++;
-			level++;
-		}
-		else if (level == 4 && scores[0][1] >20000)
-		{
-			anim[0] = 2;
-			anim[1] = 20;
-			scores[0][3]++;
-			level++;
-		}
-
-	// bonuses updates
-		bonusing(0);
-	}
-
-	magnetizm(0);
-	triggers(0);
-
-	//animations update
-	colorStuff();
-
-	//gameover
-	if (scores[0][3] <= 0 && gamestate != 2)
-	{
-		gamestate = 3;
-	}
-
-	//tgs
-	if (gamestate == 2) 
-	{
-		gameover();
-		return;
-	}
-
-	//game frames
-	if (gamestate == 0) gframe++;
-
-	if (frame % (frameskip+1)== 0) 
-	{
-		//rendering
-		FDrawRect(200,tRGB(cclr[0][0],cclr[0][1],cclr[0][2]),0,0,xmax,ymax);
-		//background
-		
-		renderBG();
-
-		//hey, do you know that this game has multipliers.
-		//oh, fuck, really, we have it!
-
-		if (tmult > 1)
-		{
-			ZoomRender(505,200,xmax/4,(ymax - getHeight(505)*xmax/(2*getWidth(505)))/2,xmax/2,getHeight(505)*xmax/(2*getWidth(505)),0,0,getWidth(505),getHeight(505),1);
-		}
-
-		//ways
-		if (quality > 0) 
-		{
-			reset(509);
-			IncludeLayer(511,509,0,0,0);
-			DrawRect(509,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),0,0,12,200,2);
-			VGradient(509,tRGB(0,0,0),tRGB(128,128,128),0,200-((frame << 2) & 4095),xmax,10,1);
-			VGradient(509,tRGB(128,128,128),tRGB(0,0,0),0,210-((frame << 2) & 4095),xmax,10,1);
-		}
-		for (i=0; i<tways; i++)
-		{
-			IncludeLayer(509,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,0,1);
-		}
-		for (i=0; i<=tways; i++)
-		{
-			FDrawVLine(200, tRGB(196,196,196),160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5,0,200);
-		}
-		//objects
-		for (i=0; i<tways; i++)
-		{
-			for (j=2; j<22; j++)
-			{
-				if (map[0][j][i] == 1)
-				{
-					if ((frame >> 2) % 8 < 4) FragmentLayer(18,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],(12*((frame >> 2) & 3)),0,12,12,0);
-					else TransformLayer(18,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],36-(12*((frame >> 2) & 3)),0,12,12,1);
-				}
-				else if (map[0][j][i] == 2)
-				{
-					switch ((frame >> 3) % 4)
-					{
-					case 0: 
-						{
-							IncludeLayer(19,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],0);
-							break;
-						}
-					case 1: 
-						{
-							TransformLayer(19,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],0,0,12,12,6);
-							break;
-						}
-					case 2: 
-						{
-							TransformLayer(19,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],0,0,12,12,3);
-							break;
-						}
-					case 3: 
-						{
-							TransformLayer(19,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],0,0,12,12,5);
-							break;
-						}
-					}
-				}
-				else if ((map[0][j][i] >= 100) && (map[0][j][i] < 200))
-				{
-					FragmentLayer(20,200,160-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],(12*((frame >> 1) % 6)),0,12,12,0);
-					if (bonuses[0][16]!=0)
-					{
-						DrawFrame(200,tRGB(0,196,0),154-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-8+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],14,14);
-						FDrawRect(200,tRGB(0,0,0),155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],12,12);
-						FragmentLayer(16+6,200,155-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[0][0])-smoothstuff[0][4],(map[0][j][i]-100)*12,0,12,12,0);
-					}
-				}
-			}
-		}
-		//spaceship
-		if (smoothstuff[0][0]<=30)FragmentLayer(506,200,162-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,165-smoothstuff[0][4],(12*((frame >> 2) & 1)),(smoothstuff[0][0]-2)/2,12,14-((smoothstuff[0][0]-2)/2),1);
-		FragmentLayer(510,200,160-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,154-smoothstuff[0][4],(16*((frame >> 2) & 1)),16*shipstyle[0],16,16,0);
-		if (bonuses[0][3] != 0 || bonuses[0][6] != 0) 
-		{
-			IncludeLayer(508,200,159-(tways*12+(tways+1)*5)/2+pos[0]*12+(pos[0]+1)*5+1,153-smoothstuff[0][4],1);
-		}
-
-		//fg effects
-		
-		renderFG();
-
-		//animations time!
-		if (anim[1] != 0)
-		{
-			if (anim[0] == 2) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,0,255,0),0,0,xmax,ymax,1);
-			else if (anim[0] == 3) DrawRect(200,ARGB(255*(10-anim[1])/10,255,0,0),0,0,xmax,ymax,1);
-			else if (anim[0] == 4) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,196,196,0),0,0,xmax,ymax,1);
-			else if (anim[0] == 5) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,0,196,196),0,0,xmax,ymax,1);
-			else if (anim[0] == 6) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,255,255,255),0,0,xmax,ymax,1);
-		}
-
-		//bonuses UI
-		t = 0;
-		for (i = 0; i<maxabonuses; i++)
-		{
-			if (bonuses[0][i] != 0)
-			{
-				int tt;
-				if (bonuses[0][i] > 100) 
-				{
-					DrawFrame(200,tRGB(0,196,0),50,20+t*20,54,18);
-					tt = 100;
-				}
-				else 
-				{
-					DrawFrame(200,tRGB(196,196,196),50,20+t*20,54,18);
-					tt = bonuses[0][i];
-				}
-				FDrawRect(200,tRGB(0,0,0),51,21+t*20,52,16);
-				FDrawRect(200,tRGB(0,196,0),52,22+t*20,14,14);
-				FDrawRect(200,tRGB(0,0,0),53,23+t*20,12,12);
-				FragmentLayer(16+6,200,53,23+t*20,i*12,0,12,12,0);
-				FragmentLayer(507,200,67,23+t*20,0,0,36*tt/100,12,0);
-				t++;
-			}
-		}
-
-		//UI
-		reset(201);
-		if (quality == 0) FDrawRect(201,tRGB(0,0,0),0,180,320,20);
-		else if (quality == 3) VGradient(201,ARGB(224,0,0,0),ARGB(64,0,0,0),0,180,320,20,0);
-		else DrawRect(201,ARGB(127,0,0,0),0,180,320,20);
-		IncludeLayer(21,201,57,183,0);
-		PrintNum(201,2,smoothstuff[0][1],tRGB(196,196,196),85,191,6);
-		if (scores[0][0] == scores[0][1]) DrawRect(201,tRGB(0,196,0),57,191,57,6,2);
-		PrintNum(201,2,smoothstuff[0][2],tRGB(196,196,196),166,191,6);
-		PrintNum(201,2,smoothstuff[0][3],tRGB(196,196,196),85,183,6);
-		PrintNum(201,2,scores[0][3],tRGB(196,196,196),234,183,6);
-		PrintNum(201,2,scores[0][4],tRGB(196,196,196),166,183,6);
-		PrintNum(201,2,smoothstuff[0][0],tRGB(196,196,196),234,191,6);
-		FDrawHLine(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),0,180,320);
-		IncludeLayer(201,200,0,0,0);
-
-		if (bonuses[0][7] != 0) DrawRect(200,0,0,0,xmax,ymax,4);
-		if (bonuses[0][10] != 0) 
-		{
-			DoGray(200,200,0,0,0);
-		}
-		else if (bonuses[0][8] != 0) 
-		{
-			DoGray(200,200,254,0,0);
-			if (quality > 1) DrawRect(200,tRGB(192,255,255),0,0,xmax,ymax,2);
-		}
-
-		menus();
-
-		sprintf(strn,"%i | %i",fps,frameskip);
-		PrintText(200,1,strn,tRGB(255,255,255),0,0);
-		renderer(200);
-	}
-}
-
-////////////////////////////////////////////////
-
-////////////////////////////////////////////////
-
-////////////////////////////////////////////////
-
-////////////////////////////////////////////////
-
-void ingame2P()
-{
-char strn[64];
-unsigned long int i,j,t;
-
-	//logic
-	if (gamestate == 0) delay++;
-
-	delayCalc();
-	Smoothing(0);
-	Smoothing(1);
-	multCalc(0);
-	multCalc(1);
-
-	if (delay >= smoothstuff[0][0])
-	{
-		delay = 0;
-		scores[0][4]++;
-		scores[1][4]++;
-		//generation
-		if (scores[0][3] > 0) generation(0);
-		if (scores[1][3] > 0) generation(1);
-	
-	//speed modifiers
-		speedUpd();
-
-	// bonuses updates
-		if (scores[0][3] > 0) bonusing(0);
-		if (scores[1][3] > 0) bonusing(1);
-	}
-
-	
-	if (scores[0][3] > 0) 
-	{
-		triggers(0);
-		magnetizm(0);
-	}
-	if (scores[1][3] > 0) 
-	{
-		triggers(1);
-		magnetizm(1);
-	}
-
-	//animations update
-	colorStuff();
-
-	//gameover
-	if (scores[0][3] <= 0 && scores[1][3] <= 0 && gamestate != 2)
-	{
-		gamestate = 3;
-	}
-
-	//tgs
-	if (gamestate == 2) 
-	{
-		gameover();
-		return;
-	}
-
-	//game frames
-	if (gamestate == 0) gframe++;
-
-	if (frame % (frameskip+1)== 0) 
-	{
-		//rendering
-		FDrawRect(200,tRGB(cclr[0][0],cclr[0][1],cclr[0][2]),0,0,xmax,ymax);
-		//background
-		
-		renderBG();
-
-		//ways
-		if (quality > 0) 
-		{
-			reset(509);
-			IncludeLayer(511,509,0,0,0);
-			DrawRect(509,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),0,0,12,215,2);
-			VGradient(509,tRGB(0,0,0),tRGB(128,128,128),0,215-((frame << 2) & 4095),xmax,10,1);
-			VGradient(509,tRGB(128,128,128),tRGB(0,0,0),0,225-((frame << 2) & 4095),xmax,10,1);
-		}
-		for (i=0; i<tways; i++)
-		{
-			IncludeLayer(509,200,100-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,0,1);
-			IncludeLayer(509,200,215-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,0,1);
-		}
-		for (i=0; i<=tways; i++)
-		{
-			FDrawVLine(200, tRGB(196,196,196),100-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5,0,200);
-			FDrawVLine(200, tRGB(196,196,196),215-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5,0,200);
-		}
-		//objects
-		int ole;
-		for (ole=0; ole<pg; ole++)
-		{
-			if (scores[ole][3] <= 0) continue;
-		for (i=0; i<tways; i++)
-		{
-			for (j=2; j<22; j++)
-			{
-				if (map[ole][j][i] == 1)
-				{
-					if ((frame >> 2) % 8 < 4) FragmentLayer(18,200,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],(12*((frame >> 2) & 3)),0,12,12,0);
-					else TransformLayer(18,200,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],36-(12*((frame >> 2) & 3)),0,12,12,1);
-				}
-				else if (map[ole][j][i] == 2)
-				{
-					switch ((frame >> 3) % 4)
-					{
-					case 0: 
-						{
-							IncludeLayer(19,200,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],0);
-							break;
-						}
-					case 1: 
-						{
-							TransformLayer(19,200,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],0,0,12,12,6);
-							break;
-						}
-					case 2: 
-						{
-							TransformLayer(19,200,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],0,0,12,12,3);
-							break;
-						}
-					case 3: 
-						{
-							TransformLayer(19,200,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],0,0,12,12,5);
-							break;
-						}
-					}
-				}
-				else if ((map[ole][j][i] >= 100) && (map[ole][j][i] < 200))
-				{
-					FragmentLayer(20,200,100+115*ole-(tways*12+(tways+1)*5)/2+i*12+(i+1)*5+3,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],(12*((frame >> 1) % 6)),0,12,12,0);
-					if (bonuses[ole][16]!=0)
-					{
-						DrawFrame(200,tRGB(0,196,0),22+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-8+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],14,14);
-						FDrawRect(200,tRGB(0,0,0),23+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],12,12);
-						FragmentLayer(16+6,200,23+186*ole-(tways*12+(tways+1)*5)/2+(tways)*12+((tways+2)+1)*5,12*(j-4)-7+(delay*12/smoothstuff[ole][0])-smoothstuff[ole][4],(map[ole][j][i]-100)*12,0,12,12,0);
-					}
-				}
-			}
-		}
-		}
-		//spaceship
-		for (ole=0; ole<pg; ole++)
-		{
-		if (smoothstuff[0][0]<=30 && scores[ole][3] > 0) FragmentLayer(506-ole*100,200,102+115*ole-(tways*12+(tways+1)*5)/2+pos[ole]*12+(pos[ole]+1)*5+1,165-smoothstuff[ole][4],(12*((frame >> 2) & 1)),(smoothstuff[0][0]-2)/2,12,14-((smoothstuff[ole][0]-2)/2),1);
-		FragmentLayer(510-ole*100,200,100+115*ole-(tways*12+(tways+1)*5)/2+pos[ole]*12+(pos[ole]+1)*5+1,154-smoothstuff[ole][4],(16*((frame >> 2) & 1)),16*shipstyle[ole],16,16,0);
-		if ((bonuses[ole][3] != 0 || bonuses[ole][6] != 0) && scores[ole][3] > 0) 
-		{
-			IncludeLayer(508-ole*100,200,99+115*ole-(tways*12+(tways+1)*5)/2+pos[ole]*12+(pos[ole]+1)*5+1,153-smoothstuff[ole][4],1);
-		}
-		}
-
-		//fg effects
-		
-		renderFG();
-
-		//animations time!
-		if (anim[1] != 0)
-		{
-			if (anim[0] == 2) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,0,255,0),0,0,xmax,ymax,1);
-			else if (anim[0] == 3) DrawRect(200,ARGB(255*(10-anim[1])/10,255,0,0),0,0,xmax,ymax,1);
-			else if (anim[0] == 4) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,196,196,0),0,0,xmax,ymax,1);
-			else if (anim[0] == 5) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,0,196,196),0,0,xmax,ymax,1);
-			else if (anim[0] == 6) DrawRect(200,ARGB(255*(10-abs(10-anim[1]))/10,255,255,255),0,0,xmax,ymax,1);
-		}
-		
-		FDrawRect(200,tRGB(192,192,192),159,0,2,200);
-
-		//bonuses UI
-		for (ole = 0; ole<pg; ole++) 
-		{
-		if (scores[ole][3] <= 0) continue;
-		int ot = 0;
-		int et = 0;
-		for (i = 0; i<maxabonuses; i++)
-		{
-			if (bonuses[ole][i] != 0)
-			{
-				int xa;
-				if (i == 4 || i == 5 || i == 7 || i == 8 || i == 10) 
-				{
-					t = ot;
-					ot++;
-					xa = 133;
-				}
-				else 
-				{	
-					t = et;
-					et++;
-					xa = 10+236*ole;
-				}
-				int tt;
-				if (bonuses[ole][i] > 100) 
-				{
-					DrawFrame(200,tRGB(0,196,0),xa,20+t*20,54,18);
-					tt = 100;
-				}
-				else 
-				{
-					DrawFrame(200,tRGB(196,196,196),xa,20+t*20,54,18);
-					tt = bonuses[ole][i];
-				}
-				FDrawRect(200,tRGB(0,0,0),xa+1,21+t*20,52,16);
-				FDrawRect(200,tRGB(0,196,0),xa+2,22+t*20,14,14);
-				FDrawRect(200,tRGB(0,0,0),xa+3,23+t*20,12,12);
-				FragmentLayer(16+6,200,xa+3,23+t*20,i*12,0,12,12,0);
-				FragmentLayer(507,200,xa+17,23+t*20,0,0,36*tt/100,12,0);
-			}
-		}
-		}
-
-		//UI
-		reset(201);
-		if (quality == 0) 
-		{
-			FDrawRect(201,tRGB(0,0,0),0,152,72,48);
-			FDrawRect(201,tRGB(0,0,0),249,152,72,48);
-		}
-		else 
-		{
-			DrawRect(201,ARGB(127,0,0,0),0,152,72,48);
-			DrawRect(201,ARGB(127,0,0,0),249,152,72,48);
-		}
-		IncludeLayer(16+23,201,0,153,0);
-		if (scores[0][1]>scores[1][1]) PrintNum(201,2,smoothstuff[0][2],tRGB(128,224,128),42,153,6);
-		else PrintNum(201,2,smoothstuff[0][2],tRGB(224,224,192),42,153,6);
-		if (scores[1][1]>scores[0][1]) PrintNum(201,2,smoothstuff[1][2],tRGB(128,224,128),250,153,6);
-		else PrintNum(201,2,smoothstuff[1][2],tRGB(224,224,192),250,153,6);
-		if (scores[0][3] > 0) 
-		{
-			PrintNum(201,2,smoothstuff[0][3],tRGB(224,224,192),42,163,6);
-			PrintNum(201,2,scores[0][3],tRGB(224,224,192),42,183,6);
-			PrintNum(201,2,scores[0][4],tRGB(224,224,192),42,173,6);
-			PrintNum(201,2,smoothstuff[0][0],tRGB(224,224,192),42,193,6);
-		}
-		if (scores[1][3] > 0) 
-		{
-			PrintNum(201,2,smoothstuff[1][3],tRGB(224,224,192),250,163,6);
-			PrintNum(201,2,scores[1][3],tRGB(224,224,192),250,183,6);
-			PrintNum(201,2,scores[1][4],tRGB(224,224,192),250,173,6);
-			PrintNum(201,2,smoothstuff[1][0],tRGB(224,224,192),250,193,6);
-		}
-		DrawFrame(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),-1,151,74,50);
-		DrawFrame(201,tRGB(cclr[1][0],cclr[1][1],cclr[1][2]),248,151,74,50);
-		IncludeLayer(201,200,0,0,0);
-
-		if (bonuses[0][7] != 0) DrawRect(200,0,0,0,xmax,ymax,4);
-		if (bonuses[0][10] != 0) 
-		{
-			DoGray(200,200,0,0,0);
-		}
-		else if (bonuses[0][8] != 0) 
-		{
-			DoGray(200,200,254,0,0);
-			if (quality > 1) DrawRect(200,tRGB(192,255,255),0,0,xmax,ymax,2);
-		}
-
-		menus();
-
-		sprintf(strn,"%i | %i",fps,frameskip);
-		PrintText(200,1,strn,tRGB(255,255,255),0,0);
-		renderer(200);
-	}
-}
-
 
 /////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
@@ -1961,8 +2313,51 @@ char strn[64], str2[32];
 
 void Demo3()
 {
-	reset(128);
-	PrintText(128,0,"Test",tRGB(255,255,0),0,0);
+if (frame %4 ==0)
+{
+
+	if (cclr[2][0] > 0 && cclr[2][1] == 255)
+	{
+		cclr[2][0]--;
+		cclr[2][2]++;
+	}
+	if (cclr[2][1] > 0 && cclr[2][2] == 255)
+	{
+		cclr[2][1]--;
+		cclr[2][0]++;
+	}
+	if (cclr[2][2] > 0 && cclr[2][0] == 255)
+	{
+		cclr[2][2]--;
+		cclr[2][1]++;
+	}
+	o = gener(8);
+}
+
+	LP.defbrightness = 128;
+	LP1.defbrightness = 128;
+
+	LP.defcolor = tRGB(cclr[2][0],cclr[2][1],cclr[2][2]);
+	LP.defincolor = tRGB(cclr[2][0]+32,cclr[2][1]+32,cclr[2][2]+32);
+	LP.Spawn(250,(frame/2)%180);
+	LP.Spawn(250,(frame/2)%180+180);
+	LP1.defcolor = tRGB(cclr[2][2],cclr[2][0],cclr[2][1]);
+	LP1.defincolor = tRGB(cclr[2][2]+32,cclr[2][0]+32,cclr[2][1]+32);
+	LP1.Spawn(250,-(frame*6/10)%180);
+	LP1.Spawn(250,-(frame*6/10)%180+180);
+
+	LP.randsize = 6;
+	LP1.randsize = 6;
+	LP.rendercore = false;
+	LP1.rendercore = false;
+
+	DrawRect(128,ARGB(32,cclr[0][0],cclr[0][1],cclr[0][2]),0,0,xmax,ymax,2); 
+
+	LP.RandomizeUpd(8);
+	LP.Draw(128,o,-o*6);
+	LP1.RandomizeUpd(8);
+	LP1.Draw(128,o,-o*6);
+
 	renderer(128);
 }
 
@@ -1983,6 +2378,7 @@ void OP()
 		{
 			if (gs == 0 && pg == 1) ingameSolo();
 			else if (gs == 0 && pg == 2) ingame2P();
+			else if (gs == 1) ingameSP();
 		}
 	}
 	else if (modif == 1) 
@@ -2127,6 +2523,11 @@ void KOP()
 		if (get_key(KEY_NUMPAD6) && get_keypressed(KEY_NUMPAD6) == 0 && gamestate == 0)
 		{
 			if (pos[1] !=tways-1) pos[1]++;
+		}
+		if ((pg != 2) && (shipstyle[0] == 5))
+		{
+			(get_keypressed(KEY_UP)!=0 || get_keypressed(KEY_W)!=0) ? ac5=true : ac5 = false;
+			(get_keypressed(KEY_DOWN)!=0 || get_keypressed(KEY_S)!=0) ? dc5=true : dc5 = false;
 		}
 	}
 	else

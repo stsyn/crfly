@@ -126,6 +126,18 @@ SOURCE=.\Lib.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\LParticles.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\LPController.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\LPObjects.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\Platform.h
 # End Source File
 # Begin Source File

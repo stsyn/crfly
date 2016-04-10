@@ -53,5 +53,6 @@
 	bool fnt_read(int fname);
 	void tex_init();
 	void font_init();
+	void BWNoise(int id, int x1, int y1, int xk, int yk);
 	
 #endif //LIB_H_INCLUDED

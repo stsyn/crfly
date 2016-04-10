@@ -14,8 +14,8 @@
 
 FILE *version_file;
 char version_path[] = VERSIOND_DAT;
-const char version_name[] = "ver. 1.4\0";
-const int curent_version = 7;
+const char version_name[] = "ver. 1.5\0";
+const int curent_version = 8;
 
 bool FileExists(const char *fname)
 {
