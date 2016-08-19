@@ -1,0 +1,39 @@
+LANG0.DAT EN-US
+Filename
+Create
+Load
+Options
+Final size
+Render size
+Target FPS
+Min frameskip
+New
+New TGA file (placing at data/textures)
+Successful, press Enter
+TGA Filename
+Frames count
+Frame 
+Anims count
+Anim
+Posit. 
+Offsets 
+Sizes  
+F1 - save | F2 - animation tool | F3 - viewer | ESC - exit
+NumPad5 - add frame | NumPad0 - remove frame
+NumPad4 / NumPad6 - frame navigation | F5 - framepos. editor
+RESERVED
+RESERVED
+Continue
+RESERVED
+NumPad5 - duplicate | NumPad0 - remove frame | ESC - return
+RESERVED
+RESERVED
+ESC - return | F3 - execute | NumPad0 - delete
+RESERVED
+RESERVED
+Add animation
+NumPad5 - add selected frame | NumPad0 - remove frame
+NumPad2 / NumPad8 - frame selector | F1 - save
+F3 - execute
+RESERVED
+Fr

@@ -15,9 +15,10 @@ private:
 	}
 
 protected:
-	int posx, posy, lifetime,speed,angle;
+	int lifetime,speed,angle;
 
 public:
+	int posx, posy;
 	bool alive;
 	void Create(int Sposx, int Sposy, int Scolor, int Ssize, int Slife, bool SR)
 	{

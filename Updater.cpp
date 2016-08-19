@@ -14,8 +14,8 @@
 
 FILE *version_file;
 char version_path[] = VERSIOND_DAT;
-const char version_name[] = "ver. 1.5\0";
-const int curent_version = 8;
+const char version_name[] = "ver. 1.6\0";
+const int curent_version = 9;
 
 bool FileExists(const char *fname)
 {
@@ -197,6 +197,61 @@ int U5_6()
 	return 0;
 }
 
+
+int U8_9()
+{
+	char upd_telling[] = "Upgrading to 1.6\0";
+
+	FILE *set_file;
+
+	long unsigned int tmp;
+	char set_path[] = HIGSCORE_DAT;
+	set_file = fopen(set_path, "r" ); 
+
+	LS(upd_telling);
+
+	fscanf(set_file, "%li", &tmp);
+	fclose(set_file);
+
+	LS(upd_telling);
+
+	set_file = fopen(set_path, "w" ); 
+	fprintf(set_file, "%li\n", tmp);
+	fprintf(set_file, "%li", ~(1078*2) & 0x7FFFFFFF);
+
+	fclose(set_file);
+
+	LS(upd_telling);
+
+
+	const int tfiles = 10;
+	char files[tfiles][64];
+	sprintf(files[0],"%s",TEXTUREPATH("runes.tga"));
+	sprintf(files[1],"%s",TEXTUREPATH("rld_bon.tga"));
+	sprintf(files[2],"%s",PATTERNS_DAT);
+	sprintf(files[3],"%s",PATTERNSPATH("200.dat"));
+	sprintf(files[4],"%s",PATTERNSPATH("201.dat"));
+	sprintf(files[5],"%s",PATTERNSPATH("300.dat"));
+	sprintf(files[6],"%s",PATTERNSPATH("301.dat"));
+	sprintf(files[7],"%s",PATTERNSPATH("302.dat"));
+	sprintf(files[8],"%s",PATTERNSPATH("303.dat"));
+	sprintf(files[9],"%s",PATTERNSPATH("304.dat"));
+	LS(upd_telling);
+
+	for (int i=0; i<tfiles; i++)
+	{
+		LS(upd_telling);
+		if (!FileExists(files[i])) 
+		{
+			char strn[64];
+			sprintf(strn, "File not found: %s", files[i]);
+			LS(strn);
+			return 2;
+		}
+	}
+	return 0;
+}
+
 /////////
 
 int Updater()
@@ -225,6 +280,10 @@ int Updater()
 		if (v == 5) 
 		{
 			stat = U5_6();
+		}
+		if (v == 8) 
+		{
+			stat = U8_9();
 		}
 		if (stat !=0) break;
 	}

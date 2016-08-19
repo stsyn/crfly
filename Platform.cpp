@@ -18,7 +18,6 @@
 #endif
 
 #include "Lib.h"
-#include "Game.h"
 #include "Platform.h"
 
 bool keys[256];
@@ -26,15 +25,20 @@ int keypressed[256];
 
 bool fullscreen=true;
 
-unsigned long int frame=0;//??
+unsigned long int frame=0;
 int fps = 0;//Frames per second
-int dticks=0;//
+int dticks=0,mindticks=999;//
 int frameskip=0;
+
+int l_minframeskip=0,l_maxframeskip=6,l_targetfps=60;
 
 int ticks, ptime, tfps;
 
 //Screen width and height
 int rxmax=0, rymax=0;
+
+//compatibility
+int minframescape;
 
 bool get_key(int id) /* export */
 {
@@ -130,6 +134,7 @@ void SwapBuffers()
 
 void Quit(int exitcode)
 {
+	l_close();
 	/* destroy() from Lib.cpp */
 	destroy();
 	PLT_DestroyWindow();
@@ -154,24 +159,29 @@ void FPSCounter() // Black magic
 		fps = tfps;
 		tfps = 0;
 	}
+	if (frameskip<l_minframeskip) frameskip=l_minframeskip;
 	
 	dticks=SDL_GetTicks()-ticks;
-	if (dticks == 0) dticks=12;
-	if (frameskip > 0)
+	if (dticks == 0) 
+	{
+		dticks=mindticks;
+	}
+	else if (dticks < mindticks) mindticks = dticks;
+	if (frameskip > l_minframeskip)
 	{	
-		if ((CLKPS/(60))*frameskip > dticks)
+		if ((CLKPS/(l_targetfps))*frameskip > dticks)
 		{
 			frameskip--;
 		}
 	}
 rtr:
-	if ((CLKPS/(60))*(frameskip+1) > dticks)
+	if ((CLKPS/(l_targetfps))*(frameskip+1) > dticks)
 	{
-		if (((CLKPS/60) - dticks) > 0) Sleep(CLKPS/(60) - dticks);
+		if (((CLKPS/l_targetfps) - dticks) > 0) Sleep(CLKPS/(l_targetfps) - dticks);
 	}
 	else
 	{
-		if (frameskip <= 5) 
+		if (frameskip <= l_maxframeskip) 
 		{
 			frameskip++;
 			goto rtr;
@@ -180,8 +190,9 @@ rtr:
 	ticks=SDL_GetTicks();
 }
 
-int main(int argc, char** argv)
+int exec()
 {
+	l_init();
 	if(SDL_Init(SDL_INIT_EVERYTHING))
 	{
 		fprintf(stderr, "Unable to initialize SDL:  %s\n", SDL_GetError());
@@ -189,26 +200,17 @@ int main(int argc, char** argv)
 	}
 	atexit(SDL_Quit);
 	
-	/* set_read() from Game.cpp */
-	if(!set_read())
-	{
-		fprintf(stderr, "Failed to load settings\n");
-        return 1;							
-	}
-	
 	PLT_CreateWindow();
 	
-	/* init() from Game.cpp */
-	if (init() != 0)
-	{
-		Quit(1);
-	}
-	
 	ticks=SDL_GetTicks();
-	while(1)
-	{
-		FPSCounter();
+	return 0;
+}
 
+int process()
+{
+	FPSCounter();
+
+		for(int i=0; i<256; i++, keys[i]?keypressed[i]++:keypressed[i]=0);
 		SDL_Event event;
 		while(SDL_PollEvent(&event))
 		{
@@ -230,17 +232,9 @@ int main(int argc, char** argv)
 					}
 					break;
 				case SDL_QUIT:
-					Quit(0);
+					return 255;
 					break;
 			}
 		}
-		
-		/* Game.cpp */
-		OP();		
-		KOP();
-		
-		for(int i=0; i<256; i++, keys[i]?keypressed[i]++:keypressed[i]=0);
-	}
-	
-	return 0;
+		return 0;
 }

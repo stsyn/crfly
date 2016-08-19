@@ -1,7 +1,7 @@
 #ifndef LIB_H_INCLUDED
 #define LIB_H_INCLUDED
 
-	extern const int xmax, ymax;
+	extern int xmax, ymax;
 
 	void buildLayer(int id,const int x,const int y);
 	void delLayer(int id);
@@ -12,6 +12,9 @@
 	void ARGBt(unsigned int color, unsigned int *a, unsigned int *r,unsigned int *g,unsigned int *b);
 	void RGBt(unsigned int color, int *r, int *g, int *b);
 	void ARGBt(unsigned int color, int *a, int *r, int *g, int *b);
+	unsigned int At(unsigned int color);
+	unsigned int tA(unsigned int color, unsigned int a);
+	unsigned int tA(unsigned int color, int a);
 	int getHeight(int id);
 	int getWidth(int id);
 	void reset(int id);
@@ -20,6 +23,7 @@
 	void add(int id, int x,int y,int a,int r,int g,int b);
 	void mult(int id, int x,int y,int r,int g,int b);
 	void mult(int id, int x,int y,int a,int r,int g,int b);
+	void multa(int id, int x,int y,int a);
 	void screening(int id, int x,int y,int r,int g,int b);
 	void plot(int id, int x,int y,unsigned int color);
 	void plot(int id, int x,int y,int r,int g,int b);
@@ -50,9 +54,16 @@
 	int gener(int max);
 	void renderer(int id);
 	bool tex_read(int fname);
+	bool tex_read(int fname, int target);
+	bool tex_read(char *tl, int target);
+	bool ctex_read(char *tl, int target);
 	bool fnt_read(int fname);
 	void tex_init();
 	void font_init();
 	void BWNoise(int id, int x1, int y1, int xk, int yk);
+
+	void l_init();
+	void l_close();
+	void l_resize(int xs, int ys);
 	
 #endif //LIB_H_INCLUDED

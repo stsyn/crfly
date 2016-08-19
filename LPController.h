@@ -4,12 +4,12 @@ class LPController
 {
 private:
 	int maxcount;
-	bool isalive[256];
 
 public: 
 	int defcolor, defincolor, deflifetime,defsize,defbrightness,spawnx,spawny,defspeed,defangle;
 	int randsize,randspawnx,randspawny,randangle,randspeed,randlife,randbright,camerax,cameray;
 	bool defrecreate,rendercore;
+	bool isalive[256];
 	LPObject P[256];
 	
 	LPController(int max, int defecolor, int defeincolor, int defelifetime,int defesize, bool deferecreate, int spawnx_, int spawny_)
@@ -72,6 +72,12 @@ public:
 			if (isalive[i]) 
 				P[i].Draw(target,sizeup,brightness,camerax,cameray);
 	}
+
+	void Destroy()
+	{
+		for (int i=0; i<maxcount; i++) isalive[i] = false;
+	}
+
 
 	void Update()
 	{

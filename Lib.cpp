@@ -15,14 +15,13 @@
 	#include <GL/glu.h>
 #endif
 
-#include "Platform.h"
 #include "Lib.h"
 #include "GameFiles.h"
 
-const int texmax=24, fontmax=3;
+int	*ocnv;
+const int texmax=26, fontmax=3;
 int **cnv[512], fontdata[fontmax][3], cnvd[512][2];
-const int xmax=320, ymax=200;
-int	ocnv[ymax][xmax];
+int xmax=320, ymax=200;
 
 char tex_list[texmax][64], font_list[fontmax][64];
 char tex_path[] = TEXLIST_DAT;
@@ -84,7 +83,20 @@ unsigned int tRGB(unsigned int r,unsigned int g,unsigned int b)
 {
 	return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }
-
+unsigned int At(unsigned int color)
+{
+	return ((color >> 24) & 255);
+}
+unsigned int tA(unsigned int color, unsigned int a)
+{
+	unsigned int tcolor = color & 0x00ffffff;
+	return (a << 24) | tcolor;
+}
+unsigned int tA(unsigned int color, int a)
+{
+	unsigned int tcolor = color & 0x00ffffff;
+	return (a << 24) | tcolor;
+}
 void RGBt(unsigned int color, unsigned int *r,unsigned int *g,unsigned int *b)
 {
 	*b=((color >> 16) & 255);
@@ -229,6 +241,19 @@ void mult(int id, int x,int y,int r,int g,int b)
 	cnv[id][x][y]= ARGB(da,dr,dg,db);
 }
 	
+
+void multa(int id, int x,int y,int a)
+{
+	if (x>=cnvd[id][0] || x<0 || y>=cnvd[id][1] || y<0) return;
+	
+	unsigned int dr,dg,db,da;
+	ARGBt(cnv[id][x][y],&da,&dr,&dg,&db);
+	if (da==0) return;
+	
+	da=(( da * a) >> 8) & 255;
+	
+	cnv[id][x][y]= ARGB(da,dr,dg,db);
+}
 void mult(int id, int x,int y,int a,int r,int g,int b)
 {
 	if (x>=cnvd[id][0] || x<0 || y>=cnvd[id][1] || y<0) return;
@@ -343,12 +368,16 @@ void DrawVLine(int id, unsigned int color, int x1, int y1, int k)
 	ARGBt(color,&a,&r,&g,&b);
 	for (i = 0; i<k; i++)
 			plot(id,x1,y1+i,a,r,g,b);
+	for (i = 0; i>=k; i--)
+			plot(id,x1,y1+i,a,r,g,b);
 }
 
 void FDrawVLine(int id, unsigned int color, int x1, int y1, int k)
 {
 	int i;
 	for (i = 0; i<k; i++)
+			plot(id,x1,y1+i,color);
+	for (i = 0; i>=k; i--)
 			plot(id,x1,y1+i,color);
 }
 	
@@ -359,12 +388,16 @@ void DrawHLine(int id, unsigned int color, int x1, int y1, int k)
 	ARGBt(color,&a,&r,&g,&b);
 	for (i = 0; i<k; i++)
 			plot(id,x1+i,y1,a,r,g,b);
+	for (i = 0; i>=k; i--)
+			plot(id,x1+i,y1,a,r,g,b);
 }
 
 void FDrawHLine(int id, unsigned int color, int x1, int y1, int k)
 {
 	int i;
 	for (i = 0; i<k; i++)
+			plot(id,x1+i,y1,color);
+	for (i = 0; i>=k; i--)
 			plot(id,x1+i,y1,color);
 }
 	
@@ -401,6 +434,7 @@ void DrawRect(int id, unsigned int color, int x1, int y1, int xk, int yk, int mo
 				else if (mode == 3) transparency(id,x1+i,y1+j,a);
 				else if (mode == 4) invert(id,x1+i,y1+j);
 				else if (mode == 5) rem(id,x1+i,y1+j,a,r,g,b);
+				else if (mode == 6) multa(id,x1+i,y1+j,a);
 			}
 			else
 				{
@@ -851,6 +885,24 @@ void DrawFrame(int id, unsigned int color, int x, int y, int xk, int yk)
 	  -Cloud Textures
 	
 */
+
+void l_init()
+{
+	ocnv = new int[ymax*xmax];
+}
+
+void l_resize(int xs, int ys)
+{
+    delete[] ocnv;
+	xmax = xs;
+	ymax = ys;
+	ocnv = new int[ymax*xmax];
+}
+
+void l_close()
+{
+    delete[] ocnv;
+}
 	
 int gener(int max)
 {
@@ -863,100 +915,91 @@ void renderer(int id)
 	for (int i=0; i<xmax; i++)
 		for (int j=0; j<ymax; j++)
 		{
-			ocnv[ymax-j-1][i] = cnv[id][i][j];
+			ocnv[(ymax-j-1)*xmax+i] = cnv[id][i][j];
 		}
-	float zoom;
-	if ((float)rymax/ymax > (float)rxmax/xmax)
+//	float zoom;
+	/*if ((float)rymax/ymax > (float)rxmax/xmax)
 	{
 		zoom = (float)rxmax/xmax;
 	}
 	else
 	{
 		zoom = (float)rymax/ymax;
-	}
+	}*/
 	
 	/*sprintf(str,"%f", zoom);
 	MessageBox(NULL,str,"ERROR",MB_OK|MB_ICONEXCLAMATION);*/
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glRasterPos2d( (rxmax - (xmax * zoom)) / 2,rymax - ( (rymax - (ymax * zoom) ) / 2));
-	glPixelZoom(zoom,zoom);
+//	glRasterPos2d( (rxmax - (xmax * zoom)) / 2,rymax - ( (rymax - (ymax * zoom) ) / 2));
+//	glPixelZoom(zoom,zoom);
+	glRasterPos2d(0,rymax-((rymax%240==0)?1:0)); //very black magic
+	glPixelZoom((float)rxmax/xmax,(float)rymax/ymax);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	
 	glDrawPixels(xmax, ymax, GL_RGBA, GL_UNSIGNED_BYTE, ocnv);
 	SwapBuffers();	
 }
-	
-bool tex_read(int fname)
+
+bool tex_read(char *tl, int target)
 {
 	unsigned short int chr[9], w, h, bit;
 	unsigned char b[4];
-	char  tl[128];
 
+	FILE *tex_file;
+	tex_file = fopen(tl, "rb" ); 
+	fread(&chr, 1, 18, tex_file);
+	
+	delLayer(target);
+	w = chr[6];
+	h = chr[5];
+	bit = (chr[8] % 256) / 8;
+	if (cnvd[target][0]!=0)
+		delLayer(target);
+	buildLayer(target,w,h);
+	
+	for (int j = 0; j<h; j++)
+		for (int i = 0; i<w; i++)
+		{
+			fread(&b, 1, bit, tex_file);
+			if (bit == 4) cnv[target][i][j] = ARGB(b[3], b[2], b[1], b[0]);
+			else cnv[target][i][j] = tRGB(b[2], b[1], b[0]);
+		}
+	fclose(tex_file);
+	return true;
+}
+bool tex_read(int fname, int target)
+{
+	char  tl[128];
 	tl[0] = '\0';
 	strcat(tl, tex_mpath);
 	strcat(tl, tex_list[fname]);
 	
-	FILE *tex_file;
-	tex_file = fopen(tl, "rb" ); 
-	fread(&chr, 1, 18, tex_file);
+	return tex_read(tl,target);
+}
 	
-	delLayer(fname+16);
-	w = chr[6];
-	h = chr[5];
-	bit = (chr[8] % 256) / 8;
-	if (cnvd[fname+16][0]!=0)
-		delLayer(fname+16);
-	buildLayer(fname+16,w,h);
+bool tex_read(int fname)
+{
+	return tex_read(fname, fname+16);
+}
 	
-	/*sprintf(tl,"%i %i %i", w,h,bit);
-	MessageBox(NULL,tl,"ERROR",MB_OK|MB_ICONEXCLAMATION);*/
-
-	for (int j = 0; j<h; j++)
-		for (int i = 0; i<w; i++)
-		{
-			fread(&b, 1, bit, tex_file);
-			if (bit == 4) cnv[fname+16][i][j] = ARGB(b[3], b[2], b[1], b[0]);
-			else cnv[fname+16][i][j] = tRGB(b[2], b[1], b[0]);
-		}
-	fclose(tex_file);
-	return true;
+bool ctex_read(char *tl, int target)
+{
+	char  otl[128];
+	otl[0] = '\0';
+	strcat(otl, tex_mpath);
+	strcat(otl, tl);
+	return tex_read(otl,target);
 }
 
 bool fnt_read(int fname)
 {
-	unsigned short int chr[9], w, h, bit;
-	unsigned char b[4];
 	char  tl[128];
-	//char str[64];
-
 	tl[0] = '\0';
 	strcat(tl, tex_mpath);
 	strcat(tl, font_list[fname]);
 	
-	printf("fnt_read: fname=%i '%s'\n", fname, tl);
-	
-	FILE *tex_file;
-	tex_file = fopen(tl, "rb" ); 
-	fread(&chr, 1, 18, tex_file);
-	
-	w = chr[6];
-	h = chr[5];
-	bit = (chr[8] % 256) / 8;
-	buildLayer(fname+1,w,h);
-	
-	/*sprintf(str,"%i %i %i", w,h,bit);
-	MessageBox(NULL,str,"ERROR",MB_OK|MB_ICONEXCLAMATION);*/
-
-	for (int j = 0; j<h; j++)
-		for (int i = 0; i<w; i++)
-		{
-			fread(&b, 1, bit, tex_file);
-			if (bit == 4) cnv[fname+1][i][j] = ARGB(b[3], b[2], b[1], b[0]);
-			else cnv[fname+1][i][j] = tRGB(b[2], b[1], b[0]);
-		}
-	fclose(tex_file);
-	return true;
+	return tex_read(tl, fname+1);
 }
+
 
 void tex_init()
 {
